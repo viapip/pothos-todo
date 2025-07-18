@@ -1,0 +1,208 @@
+import { builder } from '../builder.js';
+import { TodoStatusEnum, PriorityEnum } from '../enums.js';
+import { PriorityEnum as DomainPriorityEnum } from '../../../domain/value-objects/Priority.js';
+import { CreateTodoCommand } from '../../../application/commands/CreateTodoCommand.js';
+import { UpdateTodoCommand } from '../../../application/commands/UpdateTodoCommand.js';
+import { CompleteTodoCommand } from '../../../application/commands/CompleteTodoCommand.js';
+import { DeleteTodoCommand } from '../../../application/commands/DeleteTodoCommand.js';
+
+export const CreateTodoInput = builder.inputType('CreateTodoInput', {
+  fields: (t) => ({
+    title: t.string({ required: true }),
+    description: t.string({ required: false }),
+    priority: t.field({ type: PriorityEnum, required: false }),
+    dueDate: t.field({ type: 'DateTime', required: false }),
+    todoListId: t.id({ required: false }),
+  }),
+});
+
+export const UpdateTodoInput = builder.inputType('UpdateTodoInput', {
+  fields: (t) => ({
+    title: t.string({ required: false }),
+    description: t.string({ required: false }),
+    priority: t.field({ type: PriorityEnum, required: false }),
+    dueDate: t.field({ type: 'DateTime', required: false }),
+    todoListId: t.id({ required: false }),
+  }),
+});
+
+export const TodoMutations = builder.mutationFields((t) => ({
+  createTodo: t.prismaField({
+    type: 'Todo',
+    authScopes: { authenticated: true },
+    args: {
+      input: t.arg({ type: CreateTodoInput, required: true }),
+    },
+    resolve: async (query, root, args, context) => {
+      const userId = context.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      const todoId = crypto.randomUUID();
+      
+      const command = CreateTodoCommand.create(
+        todoId,
+        args.input.title,
+        args.input.description ?? null,
+        userId,
+        args.input.todoListId ?? null,
+        args.input.priority as DomainPriorityEnum || DomainPriorityEnum.MEDIUM,
+        args.input.dueDate
+      );
+
+      await context.container.createTodoHandler.handle(command);
+
+      return await context.prisma.todo.findUnique({
+        ...query,
+        where: { id: todoId },
+      });
+    },
+  }),
+
+  updateTodo: t.prismaField({
+    type: 'Todo',
+    authScopes: { authenticated: true },
+    args: {
+      id: t.arg.id({ required: true }),
+      input: t.arg({ type: UpdateTodoInput, required: true }),
+    },
+    resolve: async (query, root, args, context) => {
+      const userId = context.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      const existingTodo = await context.prisma.todo.findFirst({
+        where: { id: args.id, userId },
+      });
+
+      if (!existingTodo) throw new Error('Todo not found');
+
+      const updateData: any = {};
+      if (args.input.title) updateData.title = args.input.title;
+      if (args.input.description !== undefined) updateData.description = args.input.description;
+      if (args.input.priority) updateData.priority = args.input.priority;
+      if (args.input.dueDate !== undefined) updateData.dueDate = args.input.dueDate;
+      if (args.input.todoListId !== undefined) updateData.todoListId = args.input.todoListId;
+
+      const todo = await context.prisma.todo.update({
+        ...query,
+        where: { id: args.id },
+        data: updateData,
+      });
+
+      return todo;
+    },
+  }),
+
+  completeTodo: t.prismaField({
+    type: 'Todo',
+    authScopes: { authenticated: true },
+    args: {
+      id: t.arg.id({ required: true }),
+    },
+    resolve: async (query, root, args, context) => {
+      const userId = context.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      const existingTodo = await context.prisma.todo.findFirst({
+        where: { id: args.id, userId },
+      });
+
+      if (!existingTodo) throw new Error('Todo not found');
+      if (existingTodo.status === 'COMPLETED') throw new Error('Todo is already completed');
+
+      const todo = await context.prisma.todo.update({
+        ...query,
+        where: { id: args.id },
+        data: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        },
+      });
+
+      return todo;
+    },
+  }),
+
+  cancelTodo: t.prismaField({
+    type: 'Todo',
+    authScopes: { authenticated: true },
+    args: {
+      id: t.arg.id({ required: true }),
+    },
+    resolve: async (query, root, args, context) => {
+      const userId = context.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      const existingTodo = await context.prisma.todo.findFirst({
+        where: { id: args.id, userId },
+      });
+
+      if (!existingTodo) throw new Error('Todo not found');
+      if (existingTodo.status === 'COMPLETED') throw new Error('Cannot cancel completed todo');
+
+      const todo = await context.prisma.todo.update({
+        ...query,
+        where: { id: args.id },
+        data: {
+          status: 'CANCELLED',
+        },
+      });
+
+      return todo;
+    },
+  }),
+
+  deleteTodo: t.boolean({
+    authScopes: { authenticated: true },
+    args: {
+      id: t.arg.id({ required: true }),
+    },
+    resolve: async (root, args, context) => {
+      const userId = context.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      const existingTodo = await context.prisma.todo.findFirst({
+        where: { id: args.id, userId },
+      });
+
+      if (!existingTodo) throw new Error('Todo not found');
+
+      await context.prisma.todo.delete({
+        where: { id: args.id },
+      });
+
+      return true;
+    },
+  }),
+
+  setTodoStatus: t.prismaField({
+    type: 'Todo',
+    authScopes: { authenticated: true },
+    args: {
+      id: t.arg.id({ required: true }),
+      status: t.arg({ type: TodoStatusEnum, required: true }),
+    },
+    resolve: async (query, root, args, context) => {
+      const userId = context.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      const existingTodo = await context.prisma.todo.findFirst({
+        where: { id: args.id, userId },
+      });
+
+      if (!existingTodo) throw new Error('Todo not found');
+
+      const updateData: any = { status: args.status };
+      if (args.status === 'COMPLETED') {
+        updateData.completedAt = new Date();
+      }
+
+      const todo = await context.prisma.todo.update({
+        ...query,
+        where: { id: args.id },
+        data: updateData,
+      });
+
+      return todo;
+    },
+  }),
+}));
