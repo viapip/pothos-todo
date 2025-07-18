@@ -1,5 +1,19 @@
 import { defineConfig } from 'tsdown'
 
+// Load build configuration from environment variables with fallbacks
+const buildConfig = {
+  minify: process.env.BUILD_MINIFY === 'true' || process.env.NODE_ENV === 'production',
+  sourcemap: process.env.BUILD_SOURCEMAP !== 'false' && process.env.NODE_ENV !== 'production',
+  target: process.env.BUILD_TARGET || 'node18',
+  platform: process.env.BUILD_PLATFORM || 'node',
+  outDir: process.env.BUILD_OUT_DIR || 'dist',
+  clean: process.env.BUILD_CLEAN !== 'false',
+  dts: process.env.BUILD_DTS !== 'false',
+  treeshake: process.env.BUILD_TREESHAKE !== 'false',
+  report: process.env.BUILD_REPORT !== 'false',
+  watch: process.env.NODE_ENV === 'development',
+}
+
 export default defineConfig({
   // Entry points for different usage scenarios
   entry: {
@@ -25,6 +39,9 @@ export default defineConfig({
     'commands/build/menu': './src/commands/build/menu.ts',
     'commands/check/index': './src/commands/check/index.ts',
     'commands/check/menu': './src/commands/check/menu.ts',
+    'commands/config/show': './src/commands/config/show.ts',
+    'commands/config/validate': './src/commands/config/validate.ts',
+    'commands/config/menu': './src/commands/config/menu.ts',
     'commands/db/index': './src/commands/db/index.ts',
     'commands/db/menu': './src/commands/db/menu.ts',
     'commands/dev/start': './src/commands/dev/start.ts',
@@ -33,30 +50,32 @@ export default defineConfig({
     'commands/services/index': './src/commands/services/index.ts',
     'commands/services/menu': './src/commands/services/menu.ts',
     'lib/utils': './src/lib/utils.ts',
-    'logger': './src/logger.ts'
+    'logger': './src/logger.ts',
+    // Configuration files
+    'config/index': './src/config/index.ts'
   },
   
   // Output formats
   format: ['esm', 'cjs'],
   
-  // Platform and target
-  platform: 'node',
-  target: 'node18',
+  // Platform and target (from configuration)
+  platform: buildConfig.platform as any,
+  target: buildConfig.target,
   
-  // Output configuration
-  outDir: 'dist',
-  clean: true,
+  // Output configuration (from configuration)
+  outDir: buildConfig.outDir,
+  clean: buildConfig.clean,
   
   // TypeScript settings
-  dts: true,
+  dts: buildConfig.dts,
   tsconfig: './tsconfig.json',
   
-  // Development settings
-  sourcemap: true,
+  // Development settings (from configuration)
+  sourcemap: buildConfig.sourcemap,
   
-  // Optimization settings
-  treeshake: true,
-  minify: false, // Keep readable for debugging
+  // Optimization settings (from configuration)
+  treeshake: buildConfig.treeshake,
+  minify: buildConfig.minify,
   
   // Validation (disabled for private packages)
   publint: false,
@@ -65,6 +84,9 @@ export default defineConfig({
   external: [
     // Node.js built-ins
     /^node:/,
+    
+    // Configuration
+    'c12',
     
     // Database
     '@prisma/client',
@@ -93,16 +115,17 @@ export default defineConfig({
   // Skip bundling node_modules for server usage
   skipNodeModulesBundle: true,
   
-  // Reporting
-  report: true,
+  // Reporting (from configuration)
+  report: buildConfig.report,
   
-  // Watch mode configuration
-  watch: process.env.NODE_ENV === 'development',
+  // Watch mode configuration (from configuration)
+  watch: buildConfig.watch,
   
   // Hooks for custom build steps
   hooks: {
     'build:prepare': async () => {
       console.log('🔧 Preparing build...')
+      console.log('Build configuration:', buildConfig)
     },
     'build:done': async () => {
       console.log('✅ Build completed successfully!')

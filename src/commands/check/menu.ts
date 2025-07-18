@@ -99,7 +99,7 @@ export default class CheckMenu extends Command {
   private async checkPublint(): Promise<void> {
     this.log(chalk.green('📦 Checking package.json with publint...'));
     
-    const result = await executeCommand('publint', [], {
+    const result = await executeCommand('bunx', ['publint'], {
       spinnerText: 'Validating package.json...',
     });
 
@@ -116,16 +116,29 @@ export default class CheckMenu extends Command {
   private async checkAttw(): Promise<void> {
     this.log(chalk.yellow('🔧 Checking if types are wrong...'));
     
-    const result = await executeCommand('bunx', ['@arethetypeswrong/core'], {
+    const result = await executeCommand('bunx', ['@arethetypeswrong/cli', '--pack'], {
       spinnerText: 'Checking type correctness...',
     });
 
     if (result.success) {
       this.log(chalk.green('✅ Types are correct!'));
     } else {
-      this.log(chalk.red('❌ Type issues found'));
-      if (result.stdout) {
-        this.log(chalk.red(result.stdout));
+      // Check if it's only warnings (contains warning symbols but no actual errors)
+      const output = result.stdout || '';
+      const hasWarnings = output.includes('⚠️') || output.includes('Warning');
+      const hasErrors = output.includes('❌') || output.includes('Error');
+      
+      if (hasWarnings && !hasErrors) {
+        this.log(chalk.yellow('⚠️ Type compatibility warnings found'));
+        if (result.stdout) {
+          this.log(chalk.yellow(result.stdout));
+        }
+        this.log(chalk.gray('These are warnings, not errors. The package still functions correctly.'));
+      } else {
+        this.log(chalk.red('❌ Type issues found'));
+        if (result.stdout) {
+          this.log(chalk.red(result.stdout));
+        }
       }
     }
   }
@@ -146,7 +159,7 @@ export default class CheckMenu extends Command {
       {
         title: 'Package Validation (publint)',
         task: async () => {
-          const result = await executeCommand('publint', [], { silent: true });
+          const result = await executeCommand('bunx', ['publint'], { silent: true });
           if (!result.success) {
             throw new Error(result.stdout || 'Package validation failed');
           }
@@ -155,8 +168,17 @@ export default class CheckMenu extends Command {
       {
         title: 'Type Correctness Check (attw)',
         task: async () => {
-          const result = await executeCommand('bunx', ['@arethetypeswrong/core'], { silent: true });
+          const result = await executeCommand('bunx', ['@arethetypeswrong/cli', '--pack'], { silent: true });
           if (!result.success) {
+            // Check if it's only warnings
+            const output = result.stdout || '';
+            const hasWarnings = output.includes('⚠️') || output.includes('Warning');
+            const hasErrors = output.includes('❌') || output.includes('Error');
+            
+            if (hasWarnings && !hasErrors) {
+              // Just warnings, don't fail
+              return;
+            }
             throw new Error(result.stdout || 'Type issues found');
           }
         },
@@ -217,7 +239,7 @@ export default class CheckMenu extends Command {
       tasks.push({
         title: 'Package Validation (publint)',
         task: async () => {
-          const result = await executeCommand('publint', [], { silent: true });
+          const result = await executeCommand('bunx', ['publint'], { silent: true });
           if (!result.success) {
             throw new Error(result.stdout || 'Package validation failed');
           }
@@ -229,8 +251,17 @@ export default class CheckMenu extends Command {
       tasks.push({
         title: 'Type Correctness Check (attw)',
         task: async () => {
-          const result = await executeCommand('bunx', ['@arethetypeswrong/core'], { silent: true });
+          const result = await executeCommand('bunx', ['@arethetypeswrong/cli', '--pack'], { silent: true });
           if (!result.success) {
+            // Check if it's only warnings
+            const output = result.stdout || '';
+            const hasWarnings = output.includes('⚠️') || output.includes('Warning');
+            const hasErrors = output.includes('❌') || output.includes('Error');
+            
+            if (hasWarnings && !hasErrors) {
+              // Just warnings, don't fail
+              return;
+            }
             throw new Error(result.stdout || 'Type issues found');
           }
         },

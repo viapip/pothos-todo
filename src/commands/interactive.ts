@@ -44,6 +44,11 @@ export default class Interactive extends Command {
         short: 'Check',
       },
       {
+        name: `${chalk.cyan('⚙️')}  Configuration - Show, validate, and manage configuration`,
+        value: 'config',
+        short: 'Configuration',
+      },
+      {
         name: `${chalk.magenta('🗄️')}  Database - Migrations, seed, studio, docker`,
         value: 'db',
         short: 'Database',
@@ -93,6 +98,9 @@ export default class Interactive extends Command {
         break;
       case 'check':
         await this.runCommand('check:menu');
+        break;
+      case 'config':
+        await this.runCommand('config:menu');
         break;
       case 'db':
         await this.runCommand('db:menu');
@@ -163,6 +171,11 @@ ${chalk.bold('Check & Validate:')}
   • check:lint    - Package validation with publint
   • check:attw    - Are the types wrong check
   • check:all     - Run all validations
+
+${chalk.bold('Configuration:')}
+  • config:show     - Show current configuration
+  • config:validate - Validate configuration
+  • config:menu     - Interactive configuration menu
 
 ${chalk.bold('Database:')}
   • db:up         - Start database services
