@@ -1,5 +1,6 @@
 import { builder } from '../builder.js';
 import prisma from '@/lib/prisma';
+import * as TodoCrud from '@/graphql/__generated__/Todo';
 
 export const CreateTodoListInput = builder.inputType('CreateTodoListInput', {
   fields: (t) => ({
