@@ -1,16 +1,20 @@
 import { builder } from '../builder.js';
-import { TodoStatusEnum, PriorityEnum } from '../enums.js';
+import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';
 
 import prisma from '@/lib/prisma';
 import * as UserCrud from '@/graphql/__generated__/User';
 
 
 export const UserType = builder.prismaNode('User', {
-  id: {
-    field: 'id',
-  },
+  id: { field: 'id' },
+  findUnique: (id) => ({ id }),
   fields: (t) => ({
-    ...UserCrud.UserObject.fields(t),
+    // ...UserCrud.UserObject.fields(t),
+    // Instead, manually spread all fields except 'id' from UserCrud.UserObject.fields(t)
+    ...(() => {
+      const { id, ...rest } = UserCrud.UserObject.fields(t);
+      return rest;
+    })(),
     todos: t.relation('todos', {
       args: {
         status: t.arg({ type: TodoStatusEnum, required: false }),
@@ -72,7 +76,7 @@ export const UserQueries = builder.queryFields((t) => {
     findManyUser: t.prismaField({
       ...findMany,
       args: {...findMany.args, customArg: t.arg({ type: 'String', required: false })},
-      authScopes: { admin: true },
+      // authScopes: { admin: true },
       resolve: (query, root, args, context, info) => {
         const { customArg } = args;
         console.log(customArg);

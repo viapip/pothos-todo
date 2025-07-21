@@ -1,5 +1,5 @@
 import { builder } from '../builder.js';
-import { TodoStatusEnum, PriorityEnum } from '../enums.js';
+import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';
 import prisma from '@/lib/prisma';
 import * as TodoCrud from '@/graphql/__generated__/Todo';
 import { PriorityEnum as DomainPriorityEnum } from '../../../domain/value-objects/Priority.js';
@@ -36,7 +36,7 @@ export const TodoMutations = builder.mutationFields((t) => {
   return {
   createTodo: t.prismaField({
     type: 'Todo',
-    authScopes: { authenticated: true },
+    // authScopes: { authenticated: true },
     args: {
       input: t.arg({ type: CreateTodoInput, required: true }),
     },
@@ -217,7 +217,7 @@ export const TodoMutations = builder.mutationFields((t) => {
   createOneTodo: t.prismaField({
     ...createOne,
     args: {...createOne.args, customArg: t.arg({ type: 'String', required: false })},
-    authScopes: { authenticated: true },
+    // authScopes: { authenticated: true },
     resolve: async (query, root, args, context, info) => {
       const { customArg } = args;
       console.log(customArg);

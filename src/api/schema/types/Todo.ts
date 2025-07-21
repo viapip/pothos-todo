@@ -1,15 +1,17 @@
 import { builder } from '../builder.js';
-import { TodoStatusEnum, PriorityEnum } from '../enums.js';
+import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';
 import prisma from '@/lib/prisma';
 import * as TodoCrud from '@/graphql/__generated__/Todo';
 
 
 export const TodoType = builder.prismaNode('Todo', {
-  id: {
-    field: 'id',
-  },
+  id: { field: 'id' },
+  findUnique: (id) => ({ id }),
   fields: (t) => ({
-    ...TodoCrud.TodoObject.fields(t),
+    ...(() => {
+      const { id, ...rest } = TodoCrud.TodoObject.fields(t);
+      return rest;
+    })(),
   }),
 })
 
