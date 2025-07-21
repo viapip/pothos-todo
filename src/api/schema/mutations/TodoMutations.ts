@@ -1,6 +1,7 @@
 import { builder } from '../builder.js';
 import { TodoStatusEnum, PriorityEnum } from '../enums.js';
 import prisma from '@/lib/prisma';
+import * as TodoCrud from '@/graphql/__generated__/Todo';
 import { PriorityEnum as DomainPriorityEnum } from '../../../domain/value-objects/Priority.js';
 import { CreateTodoCommand } from '../../../application/commands/CreateTodoCommand.js';
 import { UpdateTodoCommand } from '../../../application/commands/UpdateTodoCommand.js';
@@ -27,7 +28,12 @@ export const UpdateTodoInput = builder.inputType('UpdateTodoInput', {
   }),
 });
 
-export const TodoMutations = builder.mutationFields((t) => ({
+export const TodoMutations = builder.mutationFields((t) => {
+  const createOne = TodoCrud.createOneTodoMutationObject(t);
+  const updateOne = TodoCrud.updateOneTodoMutationObject(t);
+  const deleteOne = TodoCrud.deleteOneTodoMutationObject(t);
+  
+  return {
   createTodo: t.prismaField({
     type: 'Todo',
     authScopes: { authenticated: true },
@@ -206,4 +212,39 @@ export const TodoMutations = builder.mutationFields((t) => ({
       return todo;
     },
   }),
-}));
+
+  // Auto-generated CRUD mutations with custom args
+  createOneTodo: t.prismaField({
+    ...createOne,
+    args: {...createOne.args, customArg: t.arg({ type: 'String', required: false })},
+    authScopes: { authenticated: true },
+    resolve: async (query, root, args, context, info) => {
+      const { customArg } = args;
+      console.log(customArg);
+      return createOne.resolve(query, root, args, context, info);
+    },
+  }),
+
+  updateOneTodo: t.prismaField({
+    ...updateOne,
+    args: {...updateOne.args, customArg: t.arg({ type: 'String', required: false })},
+    authScopes: { authenticated: true },
+    resolve: async (query, root, args, context, info) => {
+      const { customArg } = args;
+      console.log(customArg);
+      return updateOne.resolve(query, root, args, context, info);
+    },
+  }),
+
+  deleteOneTodo: t.prismaField({
+    ...deleteOne,
+    args: {...deleteOne.args, customArg: t.arg({ type: 'String', required: false })},
+    authScopes: { authenticated: true },
+    resolve: async (query, root, args, context, info) => {
+      const { customArg } = args;
+      console.log(customArg);
+      return deleteOne.resolve(query, root, args, context, info);
+    },
+  }),
+  }
+});

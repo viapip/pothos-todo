@@ -1,17 +1,20 @@
 import { builder } from '../builder.js';
-import prisma from '@/lib/prisma';
+import { TodoStatusEnum, PriorityEnum } from '../enums.js';
 
-export const UserType = builder.prismaObject('User', {
+import prisma from '@/lib/prisma';
+import * as UserCrud from '@/graphql/__generated__/User';
+
+
+export const UserType = builder.prismaNode('User', {
+  id: {
+    field: 'id',
+  },
   fields: (t) => ({
-    id: t.exposeID('id'),
-    email: t.exposeString('email'),
-    name: t.exposeString('name', { nullable: true }),
-    createdAt: t.expose('createdAt', { type: 'DateTime' }),
-    updatedAt: t.expose('updatedAt', { type: 'DateTime' }),
+    ...UserCrud.UserObject.fields(t),
     todos: t.relation('todos', {
       args: {
-        status: t.arg.string({ required: false }),
-        priority: t.arg.string({ required: false }),
+        status: t.arg({ type: TodoStatusEnum, required: false }),
+        priority: t.arg({ type: PriorityEnum, required: false }),
         search: t.arg.string({ required: false }),
       },
       query: (args) => ({
@@ -36,27 +39,67 @@ export const UserType = builder.prismaObject('User', {
   }),
 });
 
-export const UserQueries = builder.queryFields((t) => ({
-  me: t.prismaField({
-    type: 'User',
-    nullable: true,
-    authScopes: { authenticated: true },
-    resolve: (query, root, args, context) => {
-      if (!context.user) return null;
-      return prisma.user.findUnique({
-        ...query,
-        where: { id: context.user.id },
-      });
-    },
-  }),
-  users: t.prismaField({
-    type: ['User'],
-    authScopes: { admin: true },
-    resolve: (query, root, args, context) => {
-      return prisma.user.findMany({
-        ...query,
-        orderBy: { createdAt: 'desc' },
-      });
-    },
-  }),
-}));
+export const UserQueries = builder.queryFields((t) => {
+  const findFirst = UserCrud.findFirstUserQueryObject(t);
+  const findMany = UserCrud.findManyUserQueryObject(t);
+  const findUnique = UserCrud.findUniqueUserQueryObject(t);
+  const count = UserCrud.countUserQueryObject(t);
+  return {
+    me: t.prismaField({
+      type: 'User',
+      nullable: true,
+      authScopes: { authenticated: true },
+      resolve: (query, root, args, context) => {
+        if (!context.user) return null;
+        return prisma.user.findUnique({
+          ...query,
+          where: { id: context.user.id },
+        });
+      },
+    }),
+
+    findFirstUser: t.prismaField({
+      ...findFirst,
+      args: {...findFirst.args, customArg: t.arg({ type: 'String', required: false })},
+      authScopes: { admin: true },
+      resolve: (query, root, args, context, info) => {
+        const { customArg } = args;
+        console.log(customArg);
+        return findFirst.resolve(query, root, args, context, info);
+      },
+    }),
+
+    findManyUser: t.prismaField({
+      ...findMany,
+      args: {...findMany.args, customArg: t.arg({ type: 'String', required: false })},
+      authScopes: { admin: true },
+      resolve: (query, root, args, context, info) => {
+        const { customArg } = args;
+        console.log(customArg);
+        return findMany.resolve(query, root, args, context, info);
+      },
+    }),
+
+    findUniqueUser: t.prismaField({
+      ...findUnique,
+      args: {...findUnique.args, customArg: t.arg({ type: 'String', required: false })},
+      authScopes: { admin: true },
+      resolve: (query, root, args, context, info) => {
+        const { customArg } = args;
+        console.log(customArg);
+        return findUnique.resolve(query, root, args, context, info);
+      },
+    }),
+    
+    users: t.prismaField({
+      ...findMany,
+      authScopes: { admin: true },
+      resolve: (query, root, args, context) => {
+        return prisma.user.findMany({
+          ...query,
+          orderBy: { createdAt: 'desc' },
+        });
+      },
+    }),
+  }
+});

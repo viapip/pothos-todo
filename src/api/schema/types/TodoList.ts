@@ -1,15 +1,15 @@
 import { builder } from '../builder.js';
 import { TodoStatusEnum, PriorityEnum } from '../enums.js';
 import prisma from '@/lib/prisma';
+import * as TodoListCrud from '@/graphql/__generated__/TodoList';
 
-export const TodoListType = builder.prismaObject('TodoList', {
+
+export const TodoListType = builder.prismaNode('TodoList', {
+  id: {
+    field: 'id',
+  },
   fields: (t) => ({
-    id: t.exposeID('id'),
-    title: t.exposeString('title'),
-    description: t.exposeString('description', { nullable: true }),
-    createdAt: t.expose('createdAt', { type: 'DateTime' }),
-    updatedAt: t.expose('updatedAt', { type: 'DateTime' }),
-    user: t.relation('user'),
+    ...TodoListCrud.TodoListObject.fields(t),
     todos: t.relation('todos', {
       args: {
         status: t.arg({ type: TodoStatusEnum, required: false }),
@@ -74,51 +74,91 @@ export const TodoListType = builder.prismaObject('TodoList', {
   }),
 });
 
-export const TodoListQueries = builder.queryFields((t) => ({
-  todoList: t.prismaField({
-    type: 'TodoList',
-    nullable: true,
-    authScopes: { authenticated: true },
-    args: {
-      id: t.arg.id({ required: true }),
-    },
-    resolve: (query, root, args, context) => {
-      return prisma.todoList.findFirst({
-        ...query,
-        where: {
-          id: args.id,
+export const TodoListQueries = builder.queryFields((t) => {
+  const findFirst = TodoListCrud.findFirstTodoListQueryObject(t);
+  const findMany = TodoListCrud.findManyTodoListQueryObject(t);
+  const findUnique = TodoListCrud.findUniqueTodoListQueryObject(t);
+  const count = TodoListCrud.countTodoListQueryObject(t);
+  return {
+    todoList: t.prismaField({
+      type: 'TodoList',
+      nullable: true,
+      authScopes: { authenticated: true },
+      args: {
+        id: t.arg.id({ required: true }),
+      },
+      resolve: (query, root, args, context) => {
+        return prisma.todoList.findFirst({
+          ...query,
+          where: {
+            id: args.id,
+            userId: context.user?.id,
+          },
+        });
+      },
+    }),
+
+    findFirstTodoList: t.prismaField({
+      ...findFirst,
+      args: {...findFirst.args, customArg: t.arg({ type: 'String', required: false })},
+      authScopes: { authenticated: true },
+      resolve: (query, root, args, context, info) => {
+        const { customArg } = args;
+        console.log(customArg);
+        return findFirst.resolve(query, root, args, context, info);
+      },
+    }),
+
+    findManyTodoList: t.prismaField({
+      ...findMany,
+      args: {...findMany.args, customArg: t.arg({ type: 'String', required: false })},
+      authScopes: { authenticated: true },
+      resolve: (query, root, args, context, info) => {
+        const { customArg } = args;
+        console.log(customArg);
+        return findMany.resolve(query, root, args, context, info);
+      },
+    }),
+
+    findUniqueTodoList: t.prismaField({
+      ...findUnique,
+      args: {...findUnique.args, customArg: t.arg({ type: 'String', required: false })},
+      authScopes: { authenticated: true },
+      resolve: (query, root, args, context, info) => {
+        const { customArg } = args;
+        console.log(customArg);
+        return findUnique.resolve(query, root, args, context, info);
+      },
+    }),
+    
+    todoLists: t.prismaField({
+      type: ['TodoList'],
+      authScopes: { authenticated: true },
+      args: {
+        search: t.arg.string({ required: false }),
+        limit: t.arg.int({ required: false, defaultValue: 20 }),
+        offset: t.arg.int({ required: false, defaultValue: 0 }),
+      },
+      resolve: (query, root, args, context) => {
+        const where: any = {
           userId: context.user?.id,
-        },
-      });
-    },
-  }),
-  todoLists: t.prismaField({
-    type: ['TodoList'],
-    authScopes: { authenticated: true },
-    args: {
-      search: t.arg.string({ required: false }),
-      limit: t.arg.int({ required: false, defaultValue: 20 }),
-      offset: t.arg.int({ required: false, defaultValue: 0 }),
-    },
-    resolve: (query, root, args, context) => {
-      const where: any = {
-        userId: context.user?.id,
-      };
+        };
 
-      if (args.search) {
-        where.OR = [
-          { title: { contains: args.search, mode: 'insensitive' } },
-          { description: { contains: args.search, mode: 'insensitive' } },
-        ];
-      }
+        if (args.search) {
+          where.OR = [
+            { title: { contains: args.search, mode: 'insensitive' } },
+            { description: { contains: args.search, mode: 'insensitive' } },
+          ];
+        }
 
-      return prisma.todoList.findMany({
-        ...query,
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: args.limit || undefined,
-        skip: args.offset || undefined,
-      });
-    },
-  }),
-}));
+        return prisma.todoList.findMany({
+          ...query,
+          where,
+          orderBy: { createdAt: 'desc' },
+          take: args.limit || undefined,
+          skip: args.offset || undefined,
+        });
+      },
+    }),
+  }
+});

@@ -64,15 +64,15 @@ export const builder = new SchemaBuilder<{
 });
 
 
-builder.scalarType('DateTime', {
-  serialize: (date: unknown) => (date as Date).toISOString(),
-  parseValue: (date: unknown) => new Date(date as string),
-});
+// builder.scalarType('DateTime', {
+//   serialize: (date: unknown) => (date as Date).toISOString(),
+//   parseValue: (date: unknown) => new Date(date as string),
+// });
 
-builder.scalarType('JSON', {
-  serialize: (value: unknown) => value,
-  parseValue: (value: unknown) => value,
-});
+// builder.scalarType('JSON', {
+//   serialize: (value: unknown) => value,
+//   parseValue: (value: unknown) => value,
+// });
 
 builder.objectType(Error, {
   name: 'Error',

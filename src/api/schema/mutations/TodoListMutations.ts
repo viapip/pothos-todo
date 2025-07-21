@@ -1,6 +1,6 @@
 import { builder } from '../builder.js';
 import prisma from '@/lib/prisma';
-import * as TodoCrud from '@/graphql/__generated__/Todo';
+import * as TodoListCrud from '@/graphql/__generated__/TodoList';
 
 export const CreateTodoListInput = builder.inputType('CreateTodoListInput', {
   fields: (t) => ({
@@ -16,7 +16,12 @@ export const UpdateTodoListInput = builder.inputType('UpdateTodoListInput', {
   }),
 });
 
-export const TodoListMutations = builder.mutationFields((t) => ({
+export const TodoListMutations = builder.mutationFields((t) => {
+  const createOne = TodoListCrud.createOneTodoListMutationObject(t);
+  const updateOne = TodoListCrud.updateOneTodoListMutationObject(t);
+  const deleteOne = TodoListCrud.deleteOneTodoListMutationObject(t);
+  
+  return {
   createTodoList: t.prismaField({
     type: 'TodoList',
     authScopes: { authenticated: true },
@@ -96,4 +101,39 @@ export const TodoListMutations = builder.mutationFields((t) => ({
       return true;
     },
   }),
-}));
+
+  // Auto-generated CRUD mutations with custom args
+  createOneTodoList: t.prismaField({
+    ...createOne,
+    args: {...createOne.args, customArg: t.arg({ type: 'String', required: false })},
+    authScopes: { authenticated: true },
+    resolve: async (query, root, args, context, info) => {
+      const { customArg } = args;
+      console.log(customArg);
+      return createOne.resolve(query, root, args, context, info);
+    },
+  }),
+
+  updateOneTodoList: t.prismaField({
+    ...updateOne,
+    args: {...updateOne.args, customArg: t.arg({ type: 'String', required: false })},
+    authScopes: { authenticated: true },
+    resolve: async (query, root, args, context, info) => {
+      const { customArg } = args;
+      console.log(customArg);
+      return updateOne.resolve(query, root, args, context, info);
+    },
+  }),
+
+  deleteOneTodoList: t.prismaField({
+    ...deleteOne,
+    args: {...deleteOne.args, customArg: t.arg({ type: 'String', required: false })},
+    authScopes: { authenticated: true },
+    resolve: async (query, root, args, context, info) => {
+      const { customArg } = args;
+      console.log(customArg);
+      return deleteOne.resolve(query, root, args, context, info);
+    },
+  }),
+  }
+});
