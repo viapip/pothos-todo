@@ -1,4 +1,5 @@
 import { builder } from '../builder.js';
+import prisma from '@/lib/prisma';
 
 export const UserType = builder.prismaObject('User', {
   fields: (t) => ({
@@ -42,7 +43,7 @@ export const UserQueries = builder.queryFields((t) => ({
     authScopes: { authenticated: true },
     resolve: (query, root, args, context) => {
       if (!context.user) return null;
-      return context.prisma.user.findUnique({
+      return prisma.user.findUnique({
         ...query,
         where: { id: context.user.id },
       });
@@ -52,7 +53,7 @@ export const UserQueries = builder.queryFields((t) => ({
     type: ['User'],
     authScopes: { admin: true },
     resolve: (query, root, args, context) => {
-      return context.prisma.user.findMany({
+      return prisma.user.findMany({
         ...query,
         orderBy: { createdAt: 'desc' },
       });

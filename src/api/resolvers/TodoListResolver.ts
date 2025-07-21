@@ -1,4 +1,5 @@
 import { builder } from '../schema/builder.js';
+import prisma from '@/lib/prisma';
 import type { Context } from '../schema/builder.js';
 
 // Federation entity resolvers are handled via the federation plugin
@@ -6,7 +7,7 @@ import type { Context } from '../schema/builder.js';
 export const TodoListResolvers = {
   __resolveReference: async (reference: { id: string }, context: Context) => {
     const { id } = reference;
-    return await context.prisma.todoList.findUnique({
+    return await prisma.todoList.findUnique({
       where: { id },
     });
   },

@@ -1,5 +1,6 @@
 import { builder } from '../builder.js';
 import { TodoStatusEnum, PriorityEnum } from '../enums.js';
+import prisma from '@/lib/prisma';
 import { PriorityEnum as DomainPriorityEnum } from '../../../domain/value-objects/Priority.js';
 import { CreateTodoCommand } from '../../../application/commands/CreateTodoCommand.js';
 import { UpdateTodoCommand } from '../../../application/commands/UpdateTodoCommand.js';
@@ -51,7 +52,7 @@ export const TodoMutations = builder.mutationFields((t) => ({
 
       await context.container.createTodoHandler.handle(command);
 
-      return await context.prisma.todo.findUnique({
+      return await prisma.todo.findUnique({
         ...query,
         where: { id: todoId },
       });
@@ -69,7 +70,7 @@ export const TodoMutations = builder.mutationFields((t) => ({
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
-      const existingTodo = await context.prisma.todo.findFirst({
+      const existingTodo = await prisma.todo.findFirst({
         where: { id: args.id, userId },
       });
 
@@ -82,7 +83,7 @@ export const TodoMutations = builder.mutationFields((t) => ({
       if (args.input.dueDate !== undefined) updateData.dueDate = args.input.dueDate;
       if (args.input.todoListId !== undefined) updateData.todoListId = args.input.todoListId;
 
-      const todo = await context.prisma.todo.update({
+      const todo = await prisma.todo.update({
         ...query,
         where: { id: args.id },
         data: updateData,
@@ -102,14 +103,14 @@ export const TodoMutations = builder.mutationFields((t) => ({
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
-      const existingTodo = await context.prisma.todo.findFirst({
+      const existingTodo = await prisma.todo.findFirst({
         where: { id: args.id, userId },
       });
 
       if (!existingTodo) throw new Error('Todo not found');
       if (existingTodo.status === 'COMPLETED') throw new Error('Todo is already completed');
 
-      const todo = await context.prisma.todo.update({
+      const todo = await prisma.todo.update({
         ...query,
         where: { id: args.id },
         data: {
@@ -132,14 +133,14 @@ export const TodoMutations = builder.mutationFields((t) => ({
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
-      const existingTodo = await context.prisma.todo.findFirst({
+      const existingTodo = await prisma.todo.findFirst({
         where: { id: args.id, userId },
       });
 
       if (!existingTodo) throw new Error('Todo not found');
       if (existingTodo.status === 'COMPLETED') throw new Error('Cannot cancel completed todo');
 
-      const todo = await context.prisma.todo.update({
+      const todo = await prisma.todo.update({
         ...query,
         where: { id: args.id },
         data: {
@@ -160,13 +161,13 @@ export const TodoMutations = builder.mutationFields((t) => ({
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
-      const existingTodo = await context.prisma.todo.findFirst({
+      const existingTodo = await prisma.todo.findFirst({
         where: { id: args.id, userId },
       });
 
       if (!existingTodo) throw new Error('Todo not found');
 
-      await context.prisma.todo.delete({
+      await prisma.todo.delete({
         where: { id: args.id },
       });
 
@@ -185,7 +186,7 @@ export const TodoMutations = builder.mutationFields((t) => ({
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
-      const existingTodo = await context.prisma.todo.findFirst({
+      const existingTodo = await prisma.todo.findFirst({
         where: { id: args.id, userId },
       });
 
@@ -196,7 +197,7 @@ export const TodoMutations = builder.mutationFields((t) => ({
         updateData.completedAt = new Date();
       }
 
-      const todo = await context.prisma.todo.update({
+      const todo = await prisma.todo.update({
         ...query,
         where: { id: args.id },
         data: updateData,

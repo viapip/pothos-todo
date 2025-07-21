@@ -1,5 +1,6 @@
 import { builder } from '../builder.js';
 import { TodoStatusEnum, PriorityEnum } from '../enums.js';
+import prisma from '@/lib/prisma';
 
 export const TodoListType = builder.prismaObject('TodoList', {
   fields: (t) => ({
@@ -28,14 +29,14 @@ export const TodoListType = builder.prismaObject('TodoList', {
     }),
     todosCount: t.int({
       resolve: (todoList, args, context) => {
-        return context.prisma.todo.count({
+        return prisma.todo.count({
           where: { todoListId: todoList.id },
         });
       },
     }),
     completedTodosCount: t.int({
       resolve: (todoList, args, context) => {
-        return context.prisma.todo.count({
+        return prisma.todo.count({
           where: {
             todoListId: todoList.id,
             status: 'COMPLETED',
@@ -45,7 +46,7 @@ export const TodoListType = builder.prismaObject('TodoList', {
     }),
     pendingTodosCount: t.int({
       resolve: (todoList, args, context) => {
-        return context.prisma.todo.count({
+        return prisma.todo.count({
           where: {
             todoListId: todoList.id,
             status: { in: ['PENDING', 'IN_PROGRESS'] },
@@ -55,12 +56,12 @@ export const TodoListType = builder.prismaObject('TodoList', {
     }),
     completionPercentage: t.float({
       resolve: async (todoList, args, context) => {
-        const total = await context.prisma.todo.count({
+        const total = await prisma.todo.count({
           where: { todoListId: todoList.id },
         });
         if (total === 0) return 0;
         
-        const completed = await context.prisma.todo.count({
+        const completed = await prisma.todo.count({
           where: {
             todoListId: todoList.id,
             status: 'COMPLETED',
@@ -82,7 +83,7 @@ export const TodoListQueries = builder.queryFields((t) => ({
       id: t.arg.id({ required: true }),
     },
     resolve: (query, root, args, context) => {
-      return context.prisma.todoList.findFirst({
+      return prisma.todoList.findFirst({
         ...query,
         where: {
           id: args.id,
@@ -111,7 +112,7 @@ export const TodoListQueries = builder.queryFields((t) => ({
         ];
       }
 
-      return context.prisma.todoList.findMany({
+      return prisma.todoList.findMany({
         ...query,
         where,
         orderBy: { createdAt: 'desc' },

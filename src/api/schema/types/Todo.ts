@@ -1,5 +1,6 @@
 import { builder } from '../builder.js';
 import { TodoStatusEnum, PriorityEnum } from '../enums.js';
+import prisma from '@/lib/prisma';
 
 export const TodoType = builder.prismaObject('Todo', {
   fields: (t) => ({
@@ -54,7 +55,7 @@ export const TodoQueries = builder.queryFields((t) => ({
       id: t.arg.id({ required: true }),
     },
     resolve: (query, root, args, context) => {
-      return context.prisma.todo.findFirst({
+      return prisma.todo.findFirst({
         ...query,
         where: {
           id: args.id,
@@ -106,7 +107,7 @@ export const TodoQueries = builder.queryFields((t) => ({
         };
       }
 
-      return context.prisma.todo.findMany({
+      return prisma.todo.findMany({
         ...query,
         where,
         orderBy: [

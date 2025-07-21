@@ -1,4 +1,5 @@
 import { builder } from '../builder.js';
+import prisma from '@/lib/prisma';
 
 export const CreateTodoListInput = builder.inputType('CreateTodoListInput', {
   fields: (t) => ({
@@ -27,7 +28,7 @@ export const TodoListMutations = builder.mutationFields((t) => ({
 
       const todoListId = crypto.randomUUID();
       
-      const todoList = await context.prisma.todoList.create({
+      const todoList = await prisma.todoList.create({
         ...query,
         data: {
           id: todoListId,
@@ -52,7 +53,7 @@ export const TodoListMutations = builder.mutationFields((t) => ({
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
-      const existingTodoList = await context.prisma.todoList.findFirst({
+      const existingTodoList = await prisma.todoList.findFirst({
         where: { id: args.id, userId },
       });
 
@@ -62,7 +63,7 @@ export const TodoListMutations = builder.mutationFields((t) => ({
       if (args.input.title) updateData.title = args.input.title;
       if (args.input.description !== undefined) updateData.description = args.input.description;
 
-      const todoList = await context.prisma.todoList.update({
+      const todoList = await prisma.todoList.update({
         ...query,
         where: { id: args.id },
         data: updateData,
@@ -81,13 +82,13 @@ export const TodoListMutations = builder.mutationFields((t) => ({
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
-      const existingTodoList = await context.prisma.todoList.findFirst({
+      const existingTodoList = await prisma.todoList.findFirst({
         where: { id: args.id, userId },
       });
 
       if (!existingTodoList) throw new Error('TodoList not found');
 
-      await context.prisma.todoList.delete({
+      await prisma.todoList.delete({
         where: { id: args.id },
       });
 
