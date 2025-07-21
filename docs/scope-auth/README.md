@@ -1,6 +1,6 @@
-# @pothos/plugin-scope-auth
+# @pothos/plugin-scope-auth + Lucia Integration
 
-Плагин Scope Auth для Pothos предоставляет мощную систему авторизации на основе скоупов для GraphQL схем.
+Плагин Scope Auth для Pothos предоставляет мощную систему авторизации на основе скоупов для GraphQL схем. В этом проекте он интегрирован с Lucia Authentication для создания полноценной системы аутентификации и авторизации.
 
 ## Установка
 
@@ -8,7 +8,44 @@
 bun add @pothos/plugin-scope-auth
 ```
 
-## Конфигурация
+## Интеграция с Lucia Authentication
+
+В этом проекте Scope Auth интегрирован с Lucia для полноценной аутентификации:
+
+```typescript
+import SchemaBuilder from '@pothos/core';
+import ScopeAuthPlugin from '@pothos/plugin-scope-auth';
+import type { SessionWithUser } from '@/lib/auth';
+
+// Расширенный контекст с Lucia сессией
+export interface Context {
+  user: User | null;
+  container: Container;
+  session: SessionWithUser | null; // Lucia сессия
+}
+
+const builder = new SchemaBuilder<{
+  Context: Context;
+  AuthScopes: {
+    authenticated: boolean;
+    admin: boolean;
+  };
+}>({
+  plugins: [ScopeAuthPlugin],
+  scopeAuth: {
+    authorizeOnSubscribe: true,
+    // Скоупы на основе Lucia сессий
+    authScopes: async (context: Context) => ({
+      authenticated: !!context.session?.user,
+      admin: context.session?.user?.email === 'admin@example.com',
+    }),
+  },
+});
+```
+
+## Базовая конфигурация (без Lucia)
+
+Для проектов без Lucia можно использовать базовую конфигурацию:
 
 ```typescript
 import SchemaBuilder from '@pothos/core';
@@ -316,3 +353,84 @@ builder.queryType({
   }),
 });
 ```
+
+## Примеры использования с Lucia
+
+### Защищенные queries с Lucia сессиями
+
+```typescript
+// Получение текущего пользователя
+builder.queryField('currentUser', (t) =>
+  t.prismaField({
+    type: 'User',
+    nullable: true,
+    authScopes: {
+      authenticated: true, // Требует активную Lucia сессию
+    },
+    resolve: async (query, root, args, context) => {
+      // context.session гарантированно существует благодаря authScopes
+      return context.session!.user;
+    },
+  }),
+);
+
+// Админская информация
+builder.queryField('adminStats', (t) =>
+  t.field({
+    type: 'String',
+    authScopes: {
+      admin: true, // Требует admin права
+    },
+    resolve: () => 'Секретная админская информация',
+  }),
+);
+```
+
+### Защищенные mutations с Lucia
+
+```typescript
+builder.mutationField('createTodo', (t) =>
+  t.prismaField({
+    type: 'Todo',
+    authScopes: {
+      authenticated: true,
+    },
+    args: {
+      title: t.arg.string({ required: true }),
+    },
+    resolve: async (query, root, args, context) => {
+      const userId = context.session!.user.id;
+      
+      return prisma.todo.create({
+        ...query,
+        data: {
+          title: args.title,
+          userId,
+        },
+      });
+    },
+  }),
+);
+```
+
+### Миграция с базовой авторизации на Lucia
+
+```typescript
+// БЫЛО:
+authScopes: async (context) => ({
+  authenticated: !!context.user,
+  admin: context.user?.role === 'admin',
+}),
+
+// СТАЛО:
+authScopes: async (context: Context) => ({
+  authenticated: !!context.session?.user,
+  admin: context.session?.user?.email === 'admin@example.com',
+}),
+```
+
+## См. также
+
+- [Lucia Authentication Guide](../lucia/README.md) - Полная документация по Lucia
+- [OAuth Setup Guide](../oauth/README.md) - Настройка Google и GitHub OAuth
+- [Migration Guide](../auth-migration/README.md) - Миграция с базовой авторизации

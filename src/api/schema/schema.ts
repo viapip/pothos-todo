@@ -8,6 +8,7 @@ import './enums.js';
 import './types/User.js';
 import './types/Todo.js';
 import './types/TodoList.js';
+import './types/Session.js';
 import './mutations/TodoMutations.js';
 import './mutations/TodoListMutations.js';
 

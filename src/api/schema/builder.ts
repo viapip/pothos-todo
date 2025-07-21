@@ -13,10 +13,12 @@ import prisma from '@/lib/prisma';
 import type { User } from '../../domain/aggregates/User.js';
 import type { Container } from '../../infrastructure/container/Container.js';
 import type PrismaTypes from '@pothos/plugin-prisma/generated';
+import type { SessionWithUser } from '@/lib/auth';
 
 export interface Context {
   user: User | null;
   container: Container;
+  session: SessionWithUser | null;
 }
 
 export const builder = new SchemaBuilder<{
@@ -49,8 +51,8 @@ export const builder = new SchemaBuilder<{
   },
   scopeAuth: {
     authScopes: async (context: Context) => ({
-      authenticated: !!context.user,
-      admin: context.user?.email === 'admin@example.com',
+      authenticated: !!context.session?.user,
+      admin: context.session?.user?.email === 'admin@example.com',
     }),
   },
   relay: {

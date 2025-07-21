@@ -1,0 +1,117 @@
+import { github, parseOAuthState, validateOAuthState, handleGitHubOAuth, generateSessionToken, createSession, setSessionTokenCookie, type GitHubUserInfo } from '@/lib/auth';
+import type { OAuth2Tokens } from 'arctic';
+
+/**
+ * Handle GitHub OAuth callback
+ * GET /auth/github/callback
+ */
+export async function handleGitHubCallback(request: Request): Promise<Response> {
+	try {
+		const url = new URL(request.url);
+		const code = url.searchParams.get('code');
+		const state = url.searchParams.get('state');
+		
+		// Validate required parameters
+		if (!code || !state) {
+			console.error('Missing code or state parameters');
+			return new Response('Bad Request: Missing parameters', { status: 400 });
+		}
+		
+		// Get stored state from cookies
+		const cookieHeader = request.headers.get('Cookie');
+		const storedState = parseOAuthState(cookieHeader, 'github');
+		
+		// Validate state (CSRF protection)
+		if (!validateOAuthState(state, storedState)) {
+			console.error('Invalid state');
+			return new Response('Bad Request: Invalid state', { status: 400 });
+		}
+		
+		// Exchange authorization code for tokens
+		let tokens: OAuth2Tokens;
+		try {
+			tokens = await github.validateAuthorizationCode(code);
+		} catch (error) {
+			console.error('Error validating authorization code:', error);
+			return new Response('Bad Request: Invalid authorization code', { status: 400 });
+		}
+		
+		// Fetch user information from GitHub API
+		let githubUserInfo: GitHubUserInfo;
+		try {
+			const userResponse = await fetch('https://api.github.com/user', {
+				headers: {
+					Authorization: `Bearer ${tokens.accessToken()}`,
+					'User-Agent': 'Pothos-Todo-App',
+				},
+			});
+			
+			if (!userResponse.ok) {
+				throw new Error(`GitHub API error: ${userResponse.status}`);
+			}
+			
+			const userData = await userResponse.json();
+			
+			// Fetch user email if not public
+			let email = userData.email;
+			if (!email) {
+				const emailResponse = await fetch('https://api.github.com/user/emails', {
+					headers: {
+						Authorization: `Bearer ${tokens.accessToken()}`,
+						'User-Agent': 'Pothos-Todo-App',
+					},
+				});
+				
+				if (emailResponse.ok) {
+					const emails = await emailResponse.json();
+					const primaryEmail = emails.find((e: any) => e.primary && e.verified);
+					email = primaryEmail?.email || emails[0]?.email;
+				}
+			}
+			
+			if (!email) {
+				return new Response('Bad Request: No email found', { status: 400 });
+			}
+			
+			githubUserInfo = {
+				id: userData.id,
+				login: userData.login,
+				email,
+				name: userData.name || userData.login,
+				avatar_url: userData.avatar_url,
+			};
+		} catch (error) {
+			console.error('Error fetching GitHub user data:', error);
+			return new Response('Bad Request: Failed to fetch user data', { status: 400 });
+		}
+		
+		// Handle user creation/authentication
+		let user;
+		try {
+			user = await handleGitHubOAuth(githubUserInfo);
+		} catch (error) {
+			console.error('Error handling GitHub OAuth:', error);
+			return new Response('Internal Server Error: User creation failed', { status: 500 });
+		}
+		
+		// Create new session
+		const sessionToken = generateSessionToken();
+		const session = await createSession(sessionToken, user.id);
+		
+		// Create success response with redirect
+		const response = new Response(null, {
+			status: 302,
+			headers: {
+				Location: '/', // Redirect to app homepage
+			},
+		});
+		
+		// Set session cookie
+		setSessionTokenCookie(response, sessionToken, session.expiresAt);
+		
+		return response;
+	} catch (error) {
+		console.error('Unexpected error in GitHub callback:', error);
+		return new Response('Internal Server Error', { status: 500 });
+	}
+}
