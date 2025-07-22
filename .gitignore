@@ -5,7 +5,7 @@ node_modules
 **/__generated__/**
 
 # output
-out
+.output
 .out
 dist
 *.tgz
