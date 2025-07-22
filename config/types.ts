@@ -5,6 +5,13 @@ export interface ServerConfig {
     origin: string | string[] | undefined;
     credentials: boolean;
   };
+  session?: {
+    secret: string;
+    name?: string;
+    maxAge?: number;
+    secure?: boolean;
+    sameSite?: 'lax' | 'strict' | 'none';
+  };
 }
 
 export interface DatabaseConfig {

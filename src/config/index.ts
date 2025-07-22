@@ -225,6 +225,26 @@ export function getServerConfig() {
       origin: 'http://localhost:3000',
       credentials: true,
     },
+    session: {
+      secret: 'fallback-key',
+      name: 'h3-session',
+      maxAge: 60 * 60 * 24 * 7,
+      secure: false,
+      sameSite: 'lax' as const,
+    },
+  });
+}
+
+/**
+ * Get session configuration
+ */
+export function getSessionConfig() {
+  return getConfigValueSafe('server.session', {
+    secret: 'fallback-key',
+    name: 'h3-session', 
+    maxAge: 60 * 60 * 24 * 7,
+    secure: false,
+    sameSite: 'lax' as const,
   });
 }
 

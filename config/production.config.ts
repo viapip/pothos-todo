@@ -9,6 +9,9 @@ export default {
       origin: process.env.FRONTEND_URL || undefined,
       credentials: true,
     },
+    session: {
+      secure: true, // Enable secure cookies in production
+    },
   },
 
   // Production Logger Configuration

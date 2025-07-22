@@ -153,10 +153,9 @@ export function parseSessionToken(cookieHeader: string | null): string | null {
 /**
  * Get current session from request (for middleware/context)
  */
-export async function getCurrentSession(request: Request): Promise<SessionWithUser | null> {
-	const cookieHeader = request.headers.get('Cookie');
-	const token = parseSessionToken(cookieHeader);
-	
+export async function getCurrentSession(token: string | null): Promise<SessionWithUser | null> {
+
+
 	if (!token) return null;
 	
 	return validateSessionToken(token);

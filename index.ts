@@ -1,57 +1,138 @@
-import { createServer } from 'node:http';
+import { createApp, eventHandler, useSession, toNodeListener } from 'h3';
 import { yoga } from './src/api/server/server.js';
 import { logger } from './src/logger.js';
-import { loadAppConfig, getServerConfig } from './src/config/index.js';
-import { authRoutes } from './src/routes/auth/index.js';
+import { loadAppConfig, getServerConfig, getSessionConfig } from './src/config/index.js';
+import { 
+  handleGoogleLogin, 
+  handleGoogleCallback,
+  handleGitHubLogin, 
+  handleGitHubCallback,
+  handleLogout,
+  handleLogoutAll
+} from './src/routes/auth/index.js';
+import { createServer } from 'node:http';
 
 async function startServer() {
   try {
     // Load configuration
     await loadAppConfig();
     const serverConfig = getServerConfig();
+    const sessionConfig = getSessionConfig();
     
-    const server = createServer(async (req, res) => {
-      const url = new URL(req.url!, `http://${req.headers.host}`);
-      
-      // Handle auth routes
-      if (url.pathname.startsWith('/auth/')) {
-        const route = authRoutes[url.pathname as keyof typeof authRoutes];
-        if (route && req.method && route[req.method as keyof typeof route]) {
-          try {
-            const handler = route[req.method as keyof typeof route] as Function;
-            const request = new Request(url.toString(), {
-              method: req.method,
-              headers: req.headers as HeadersInit,
-              body: req.method !== 'GET' && req.method !== 'HEAD' ? req : undefined,
-            });
-            
-            const response = await handler(request);
-            
-            // Copy response to Node.js response
-            res.statusCode = response.status;
-            response.headers.forEach((value, key) => {
-              res.setHeader(key, value);
-            });
-            
-            if (response.body) {
-              const body = await response.text();
-              res.end(body);
-            } else {
-              res.end();
-            }
-            return;
-          } catch (error) {
-            logger.error('Error handling auth route:', error);
-            res.statusCode = 500;
-            res.end('Internal Server Error');
-            return;
-          }
+    // Create H3 app
+    const app = createApp();
+    
+    // Global middleware for request logging
+    app.use(
+      eventHandler(async (event) => {
+        const startTime = Date.now();
+        event.context.startTime = startTime;
+        
+        logger.info('Request', {
+          method: event.node.req.method,
+          url: event.node.req.url,
+          userAgent: event.node.req.headers['user-agent'],
+        });
+      })
+    );
+    
+    // Session middleware
+    app.use(
+      eventHandler(async (event) => {
+        if (event.node.req.url?.startsWith('/auth/')) {
+          const session = await useSession(event, {
+            password: sessionConfig.secret,
+            name: sessionConfig.name,
+            maxAge: sessionConfig.maxAge,
+            cookie: {
+              secure: sessionConfig.secure,
+              sameSite: sessionConfig.sameSite,
+            },
+          });
+          event.context.session = session;
         }
-      }
+      })
+    );
+    
+    // Auth routes with session support
+    app.use('/auth/google', eventHandler(async (event) => {
+      // Convert Node.js request to Web API Request
+      const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
+      const request = new Request(url.toString(), {
+        method: event.node.req.method,
+        headers: event.node.req.headers as HeadersInit,
+        body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
+      });
       
-      // Handle GraphQL requests
-      return yoga(req, res);
-    });
+      return await handleGoogleLogin(request);
+    }));
+    
+    app.use('/auth/google/callback', eventHandler(async (event) => {
+      const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
+      const request = new Request(url.toString(), {
+        method: event.node.req.method,
+        headers: event.node.req.headers as HeadersInit,
+        body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
+      });
+      
+      return await handleGoogleCallback(request);
+    }));
+    
+    app.use('/auth/github', eventHandler(async (event) => {
+      const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
+      const request = new Request(url.toString(), {
+        method: event.node.req.method,
+        headers: event.node.req.headers as HeadersInit,
+        body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
+      });
+      
+      return await handleGitHubLogin(request);
+    }));
+    
+    app.use('/auth/github/callback', eventHandler(async (event) => {
+      const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
+      const request = new Request(url.toString(), {
+        method: event.node.req.method,
+        headers: event.node.req.headers as HeadersInit,
+        body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
+      });
+      
+      return await handleGitHubCallback(request);
+    }));
+    
+    app.use('/auth/logout', eventHandler(async (event) => {
+      if (event.node.req.method === 'POST') {
+        const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
+        const request = new Request(url.toString(), {
+          method: event.node.req.method,
+          headers: event.node.req.headers as HeadersInit,
+          body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
+        });
+        
+        return await handleLogout(request);
+      }
+    }));
+    
+    app.use('/auth/logout/all', eventHandler(async (event) => {
+      if (event.node.req.method === 'POST') {
+        const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
+        const request = new Request(url.toString(), {
+          method: event.node.req.method,
+          headers: event.node.req.headers as HeadersInit,
+          body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
+        });
+        
+        return await handleLogoutAll(request);
+      }
+    }));
+    
+    // Mount GraphQL Yoga
+    app.use('/graphql', eventHandler(async (event) => {
+      return yoga(event.node.req, event.node.res);
+    }));
+    
+    // Create server using H3 app with toNodeListener
+    const server = createServer(toNodeListener(app));
     
     server.listen(serverConfig.port, serverConfig.host, () => {
       logger.info('Server started', {
@@ -59,7 +140,14 @@ async function startServer() {
         host: serverConfig.host,
         graphqlEndpoint: yoga.graphqlEndpoint,
         graphiqlUrl: `http://${serverConfig.host}:${serverConfig.port}${yoga.graphqlEndpoint}`,
-        authEndpoints: Object.keys(authRoutes),
+        authEndpoints: [
+          '/auth/google', 
+          '/auth/google/callback',
+          '/auth/github', 
+          '/auth/github/callback',
+          '/auth/logout', 
+          '/auth/logout/all'
+        ],
       });
     });
     
@@ -79,6 +167,8 @@ async function startServer() {
         process.exit(0);
       });
     });
+    
+    return server;
   } catch (error) {
     logger.error('Failed to start server', { error });
     process.exit(1);

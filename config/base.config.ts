@@ -7,6 +7,13 @@ export default {
       origin: process.env.FRONTEND_URL || 'http://localhost:3000',
       credentials: true,
     },
+    session: {
+      secret: process.env.SESSION_SECRET || 'your-secret-key-here-change-in-production',
+      name: 'h3-session',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      secure: false, // Will be overridden in production
+      sameSite: 'lax',
+    },
   },
 
   // Database Configuration
