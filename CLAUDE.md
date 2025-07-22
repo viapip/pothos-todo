@@ -31,17 +31,28 @@ bun run db:studio          # Open Prisma Studio
 ```bash
 bun run test               # Run test suite
 bun run test:watch         # Run tests in watch mode
-bun run test:coverage      # Generate coverage report
+bun run test:coverage      # Generate coverage report (80% threshold)
+bun run test:ui            # Launch Vitest UI
 bun run test:e2e           # Run end-to-end tests
 bun run validate           # Full validation (types + tests)
+
+# Run specific test patterns
+bunx vitest run src/domain/aggregates/User.test.ts    # Single test file
+bunx vitest run --grep "should create user"           # Test by name pattern
+VITEST_QUIET=true bun run test                        # Suppress console output
 ```
 
-### Additional Commands
+### Code Quality & Build
 ```bash
 bun run build:prod         # Production build
 bun run build:watch        # Build in watch mode
 bun run check:publint      # Check package publishing
 bun run check:attw         # Are The Types Wrong check
+
+# Linting & Formatting (Biome)
+bunx biome check --apply   # Auto-fix linting issues
+bunx biome format          # Format code
+bunx biome lint            # Lint only
 ```
 
 ## Architecture Overview
@@ -123,9 +134,16 @@ const port = process.env.PORT;
 
 ## Development Guidelines
 
+### Code Quality Standards
+- **Linting**: Biome with strict rules (unused variables as errors)
+- **Formatting**: 2-space indents, 100 char line width, single quotes
+- **TypeScript**: Strict mode with exhaustive dependency warnings
+- **Security**: No dangerous innerHTML, explicit any warnings
+
 ### Generated Code
 - **Never edit** files in `src/graphql/__generated__/` - these are auto-generated
 - **Regenerate** after Prisma schema changes: `bun run db:generate`
+- **Excluded from**: Linting, testing, coverage reports
 - **Current issue**: Generated files have type compatibility issues with Pothos plugins
 
 ### Database Operations
@@ -139,10 +157,13 @@ const port = process.env.PORT;
 - **Graceful degradation**: System continues with reduced functionality on component failures
 
 ### Testing Approach
-- **Unit tests**: Domain logic and utilities
-- **Integration tests**: GraphQL resolvers and database operations
-- **E2E tests**: Full application workflows
-- **Test containers**: PostgreSQL containers for integration testing
+- **Unit tests**: Domain logic and utilities (`tests/unit/`)
+- **Integration tests**: GraphQL resolvers and database operations (`tests/integration/`)
+- **E2E tests**: Full application workflows (`tests/e2e/`)
+- **Test setup**: Global test environment with mocked env vars (`tests/setup.ts`)
+- **Coverage requirements**: 80% threshold for branches/functions/lines/statements
+- **Test isolation**: Single fork pool for database test isolation
+- **Path aliases**: `@/` for src, `~/` for root directory
 
 ## Known Issues & Workarounds
 
@@ -160,6 +181,14 @@ const port = process.env.PORT;
 - **Tracing system**: OpenTelemetry configuration issues (lines 72-78 in index.ts)
 - **API versioning**: Plugin compatibility (lines 58-65, 274-279 in index.ts)
 - **Graceful shutdown**: Handlers commented out (lines 398-416 in index.ts)
+
+## CLI Development
+
+### Interactive CLI (oclif-based)
+- **CLI Binary**: `pothos-cli` available after build
+- **Commands**: Organized by topic (build, check, config, db, dev, services)
+- **Development**: Commands in `src/commands/` with menu-driven interfaces
+- **Usage**: Type-safe command definitions with help integration
 
 ## Server Endpoints
 
