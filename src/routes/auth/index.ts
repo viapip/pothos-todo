@@ -1,12 +1,15 @@
-// Google OAuth routes
+// Import handlers
+import { handleGoogleLogin } from './google';
+import { handleGoogleCallback } from './google-callback';
+import { handleGitHubLogin } from './github';
+import { handleGitHubCallback } from './github-callback';
+import { handleLogout, handleLogoutAll } from './logout';
+
+// Re-export handlers
 export { handleGoogleLogin } from './google';
 export { handleGoogleCallback } from './google-callback';
-
-// GitHub OAuth routes
 export { handleGitHubLogin } from './github';
 export { handleGitHubCallback } from './github-callback';
-
-// Logout routes
 export { handleLogout, handleLogoutAll } from './logout';
 
 /**

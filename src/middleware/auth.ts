@@ -42,7 +42,7 @@ export async function authMiddleware(request: Request): Promise<Partial<Context>
  * Enhanced context factory that combines auth middleware with other context
  */
 export function createGraphQLContext(container: any) {
-	return async (request: Request): Promise<Context> => {
+	return async ({ request }: { request: Request }): Promise<Context> => {
 		// Get auth context
 		const authContext = await authMiddleware(request);
 		
