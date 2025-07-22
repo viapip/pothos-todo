@@ -11,6 +11,10 @@ import {
   cacheOperationsTotal,
   cacheOperationDuration,
 } from '../monitoring/metrics.js';
+import { 
+  CacheError,
+  CacheTimeoutError,
+} from './types.js';
 import type {
   CacheConfig,
   CacheLevel,
@@ -21,8 +25,6 @@ import type {
   CachePolicy,
   CacheStats,
   CacheValue,
-  CacheError,
-  CacheTimeoutError,
   CacheMiddleware,
   CacheEventEmitter,
 } from './types.js';

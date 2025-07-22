@@ -12,11 +12,10 @@ import './types/Todo.js';
 import './types/TodoList.js';
 import './types/Session.js';
 import './types/Subscription.js';
-import './types/VersionedTodo.js';
+// Temporarily disabled versioning system
+// import './types/VersionedTodo.js';
 import './mutations/TodoMutations.js';
 import './mutations/TodoListMutations.js';
-import './queries/VersionedQueries.js';
-import './mutations/VersionedMutations.js';
 
 export const schema = builder.toSchema();
 

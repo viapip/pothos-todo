@@ -348,8 +348,8 @@ export class DeprecationError extends VersioningError {
   constructor(
     message: string,
     public deprecationInfo: DeprecationInfo,
-    public path: string,
-    public version: ApiVersion
+    public override path: string,
+    public override version: ApiVersion
   ) {
     super(message, 'DEPRECATED_USAGE', version, path);
     this.name = 'DeprecationError';

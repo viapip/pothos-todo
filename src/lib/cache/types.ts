@@ -3,6 +3,8 @@
  * Comprehensive type definitions for Redis-based distributed caching and DataLoader batching
  */
 
+import type DataLoader from 'dataloader';
+
 // ================================
 // Cache Configuration Types
 // ================================
@@ -288,6 +290,18 @@ export interface CacheableResolver<TSource = any, TArgs = any, TContext = any, T
   ) => string;
 }
 
+// Forward declaration to avoid circular dependency
+export interface CacheManager {
+  get<T = any>(key: string | CacheKey, level?: CacheLevel): Promise<CacheResult<T>>;
+  set<T = any>(key: string | CacheKey, value: T, ttl?: number, level?: CacheLevel): Promise<void>;
+  delete(key: string, level?: CacheLevel): Promise<boolean>;
+  clear(level?: CacheLevel): Promise<void>;
+  getStats(): CacheStats;
+  addMiddleware(middleware: CacheMiddleware): void;
+  invalidateByTag(tag: string): Promise<number>;
+  invalidateByPattern(pattern: string): Promise<number>;
+}
+
 export interface CachedGraphQLContext {
   cache: CacheManager;
   loaders: LoaderContext;
@@ -311,7 +325,7 @@ export class CacheError extends Error {
     public operation: string,
     public level: CacheLevel,
     public key?: string,
-    public cause?: Error
+    public override cause?: Error
   ) {
     super(message);
     this.name = 'CacheError';

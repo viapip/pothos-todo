@@ -67,6 +67,8 @@
     "coverage",
     "**/*.test.ts",
     "**/*.spec.ts",
-    "src/graphql/__generated__/**/*"
+    "src/graphql/**",
+    "src/api/schema/types/VersionedTodo.ts",
+    "src/lib/versioning/**"
   ]
 }

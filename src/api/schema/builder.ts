@@ -15,7 +15,8 @@ import type { Container } from '../../infrastructure/container/Container.js';
 import type PrismaTypes from '@pothos/plugin-prisma/generated';
 import type { SessionWithUser } from '@/lib/auth';
 import type { H3Event } from 'h3';
-import type { VersionedGraphQLContext } from '@/lib/versioning/types.js';
+// Temporarily disabled versioning system
+// import type { VersionedGraphQLContext } from '@/lib/versioning/types.js';
 
 export interface Context {
   user: User | null;
@@ -25,7 +26,7 @@ export interface Context {
 }
 
 export const builder = new SchemaBuilder<{
-  Context: VersionedGraphQLContext;
+  Context: Context;
   PrismaTypes: PrismaTypes;
   Scalars: {
     DateTime: { Input: Date; Output: Date };
@@ -68,16 +69,6 @@ export const builder = new SchemaBuilder<{
   },
 });
 
-
-builder.scalarType('DateTime', {
-  serialize: (date: unknown) => (date as Date).toISOString(),
-  parseValue: (date: unknown) => new Date(date as string),
-});
-
-builder.scalarType('JSON', {
-  serialize: (value: unknown) => value,
-  parseValue: (value: unknown) => value,
-});
 
 builder.objectType(Error, {
   name: 'Error',

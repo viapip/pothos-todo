@@ -4,6 +4,7 @@ import { schema } from "../schema/schema.js";
 import { Container } from "../../infrastructure/container/Container.js";
 import { createVersioningPlugins } from "../../lib/versioning/plugin.js";
 import { createCachedContext, createCacheMiddleware } from "../../lib/cache/integration.js";
+import { createGraphQLTracingMiddleware } from "../../lib/tracing/graphql-middleware.js";
 // import { logger } from "../../logger.js";
 // import { createH3GraphQLContext } from "../../middleware/auth.js";
 import type { Context } from "../schema/builder.js";
