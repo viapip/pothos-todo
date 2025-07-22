@@ -1,14 +1,15 @@
-import { google, parseOAuthState, parseCodeVerifier, validateOAuthState, handleGoogleOAuth, generateSessionToken, createSession, setSessionTokenCookie, type GoogleUserInfo } from '@/lib/auth';
+import { google, getOAuthState, getCodeVerifier, validateOAuthState, handleGoogleOAuth, generateSessionToken, createSession, setSessionTokenCookie, type GoogleUserInfo } from '@/lib/auth';
 import { decodeIdToken } from 'arctic';
 import type { OAuth2Tokens } from 'arctic';
+import { type H3Event } from 'h3';
 
 /**
- * Handle Google OAuth callback
+ * Handle Google OAuth callback using H3
  * GET /auth/google/callback
  */
-export async function handleGoogleCallback(request: Request): Promise<Response> {
+export async function handleGoogleCallback(event: H3Event): Promise<Response> {
 	try {
-		const url = new URL(request.url);
+		const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
 		const code = url.searchParams.get('code');
 		const state = url.searchParams.get('state');
 		
@@ -18,10 +19,9 @@ export async function handleGoogleCallback(request: Request): Promise<Response> 
 			return new Response('Bad Request: Missing parameters', { status: 400 });
 		}
 		
-		// Get stored state and code verifier from cookies
-		const cookieHeader = request.headers.get('Cookie');
-		const storedState = parseOAuthState(cookieHeader, 'google');
-		const codeVerifier = parseCodeVerifier(cookieHeader);
+		// Get stored state and code verifier from H3 cookies
+		const storedState = getOAuthState(event, 'google');
+		const codeVerifier = getCodeVerifier(event, 'google');
 		
 		// Validate state (CSRF protection)
 		if (!validateOAuthState(state, storedState) || !codeVerifier) {
@@ -60,6 +60,9 @@ export async function handleGoogleCallback(request: Request): Promise<Response> 
 		const sessionToken = generateSessionToken();
 		const session = await createSession(sessionToken, user.id);
 		
+		// Set session cookie using H3
+		setSessionTokenCookie(event, sessionToken, session.expiresAt);
+		
 		// Create success response with redirect
 		const response = new Response(null, {
 			status: 302,
@@ -67,9 +70,6 @@ export async function handleGoogleCallback(request: Request): Promise<Response> 
 				Location: '/', // Redirect to app homepage
 			},
 		});
-		
-		// Set session cookie
-		setSessionTokenCookie(response, sessionToken, session.expiresAt);
 		
 		return response;
 	} catch (error) {

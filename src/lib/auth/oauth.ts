@@ -1,13 +1,19 @@
 import { Google, GitHub } from 'arctic';
+import { setCookie, getCookie, type H3Event } from 'h3';
+import { getServerConfig, getOAuthConfig, isProduction } from '@/config/index.js';
 
-// Environment variables (these should be set in your .env file)
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || '';
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
+// Get configuration values using the centralized config system
+const serverConfig = getServerConfig();
+const oauthConfig = getOAuthConfig();
 
-// Base URL for your application
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+// OAuth configuration from centralized config
+const GOOGLE_CLIENT_ID = oauthConfig.google.clientId;
+const GOOGLE_CLIENT_SECRET = oauthConfig.google.clientSecret;
+const GOOGLE_REDIRECT_URI = oauthConfig.google.redirectUri;
+
+const GITHUB_CLIENT_ID = oauthConfig.github.clientId;
+const GITHUB_CLIENT_SECRET = oauthConfig.github.clientSecret;
+const GITHUB_REDIRECT_URI = oauthConfig.github.redirectUri;
 
 /**
  * Google OAuth provider configuration
@@ -15,7 +21,7 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 export const google = new Google(
 	GOOGLE_CLIENT_ID,
 	GOOGLE_CLIENT_SECRET,
-	`${BASE_URL}/auth/google/callback`
+	GOOGLE_REDIRECT_URI
 );
 
 /**
@@ -24,7 +30,7 @@ export const google = new Google(
 export const github = new GitHub(
 	GITHUB_CLIENT_ID,
 	GITHUB_CLIENT_SECRET,
-	`${BASE_URL}/auth/github/callback`
+	GITHUB_REDIRECT_URI
 );
 
 /**
@@ -52,61 +58,49 @@ export function generateCodeVerifier(): string {
 }
 
 /**
- * Set OAuth state cookie
+ * Set OAuth state cookie using H3
  */
-export function setOAuthStateCookie(response: any, state: string, provider: 'google' | 'github'): void {
-	const isProduction = process.env.NODE_ENV === 'production';
+export function setOAuthStateCookie(event: H3Event, state: string, provider: 'google' | 'github'): void {
 	const cookieName = `${provider}_oauth_state`;
-	const cookieValue = `${cookieName}=${state}; HttpOnly; SameSite=Lax; Path=/; Max-Age=600${isProduction ? '; Secure' : ''}`;
 	
-	if (response.headers) {
-		response.headers.append('Set-Cookie', cookieValue);
-	} else if (response.setHeader) {
-		response.setHeader('Set-Cookie', cookieValue);
-	}
+	setCookie(event, cookieName, state, {
+		httpOnly: true,
+		sameSite: 'lax',
+		path: '/',
+		maxAge: 600, // 10 minutes
+		secure: isProduction(),
+	});
 }
 
 /**
- * Set code verifier cookie (for Google PKCE)
+ * Set code verifier cookie using H3 (for Google PKCE)
  */
-export function setCodeVerifierCookie(response: any, codeVerifier: string, provider: 'google'): void {
-	const isProduction = process.env.NODE_ENV === 'production';
+export function setCodeVerifierCookie(event: H3Event, codeVerifier: string, provider: 'google'): void {
 	const cookieName = `${provider}_code_verifier`;
-	const cookieValue = `${cookieName}=${codeVerifier}; HttpOnly; SameSite=Lax; Path=/; Max-Age=600${isProduction ? '; Secure' : ''}`;
 	
-	if (response.headers) {
-		response.headers.append('Set-Cookie', cookieValue);
-	} else if (response.setHeader) {
-		response.setHeader('Set-Cookie', cookieValue);
-	}
+	setCookie(event, cookieName, codeVerifier, {
+		httpOnly: true,
+		sameSite: 'lax',
+		path: '/',
+		maxAge: 600, // 10 minutes
+		secure: isProduction(),
+	});
 }
 
 /**
- * Parse OAuth state from cookies
+ * Get OAuth state from H3 event cookies
  */
-export function parseOAuthState(cookieHeader: string | null, provider: 'google' | 'github'): string | null {
-	if (!cookieHeader) return null;
-	
-	const cookies = cookieHeader.split(';').map(cookie => cookie.trim());
-	const stateCookie = cookies.find(cookie => cookie.startsWith(`${provider}_oauth_state=`));
-	
-	if (!stateCookie) return null;
-	
-	return stateCookie.split('=')[1] || null;
+export function getOAuthState(event: H3Event, provider: 'google' | 'github'): string | null {
+	const cookieName = `${provider}_oauth_state`;
+	return getCookie(event, cookieName) || null;
 }
 
 /**
- * Parse code verifier from cookies (for Google PKCE)
+ * Get code verifier from H3 event cookies (for Google PKCE)
  */
-export function parseCodeVerifier(cookieHeader: string | null): string | null {
-	if (!cookieHeader) return null;
-	
-	const cookies = cookieHeader.split(';').map(cookie => cookie.trim());
-	const verifierCookie = cookies.find(cookie => cookie.startsWith('google_code_verifier='));
-	
-	if (!verifierCookie) return null;
-	
-	return verifierCookie.split('=')[1] || null;
+export function getCodeVerifier(event: H3Event, provider: 'google' = 'google'): string | null {
+	const cookieName = `${provider}_code_verifier`;
+	return getCookie(event, cookieName) || null;
 }
 
 /**

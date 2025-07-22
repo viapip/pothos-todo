@@ -50,6 +50,11 @@ export default class Interactive extends Command {
         short: 'Database',
       },
       {
+        name: `${chalk.blue('📄')} Schema - Print GraphQL schemas to SDL format`,
+        value: 'schema',
+        short: 'Schema',
+      },
+      {
         name: `${chalk.yellow('🔧')} Services - Docker compose, service management`,
         value: 'services',
         short: 'Services',
@@ -97,6 +102,9 @@ export default class Interactive extends Command {
         break;
       case 'db':
         await this.runCommand('db:menu');
+        break;
+      case 'schema':
+        await this.runCommand('schema:menu');
         break;
       case 'services':
         await this.runCommand('services:menu');
@@ -171,6 +179,13 @@ ${chalk.bold('Database:')}
   • db:migrate    - Run database migrations
   • db:seed       - Seed database with test data
   • db:studio     - Open Prisma Studio
+
+${chalk.bold('Schema:')}
+  • schema        - Print GraphQL schemas to SDL format
+  • schema --main - Print main schema only
+  • schema --federation - Print federation schema only
+  • schema --all  - Print both schemas
+  • schema --preview - Preview schemas without saving
 
 ${chalk.bold('Services:')}
   • services:up   - Start all services (Docker Compose)

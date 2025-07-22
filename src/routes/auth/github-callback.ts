@@ -1,13 +1,14 @@
-import { github, parseOAuthState, validateOAuthState, handleGitHubOAuth, generateSessionToken, createSession, setSessionTokenCookie, type GitHubUserInfo } from '@/lib/auth';
+import { github, getOAuthState, validateOAuthState, handleGitHubOAuth, generateSessionToken, createSession, setSessionTokenCookie, type GitHubUserInfo } from '@/lib/auth';
 import type { OAuth2Tokens } from 'arctic';
+import { type H3Event } from 'h3';
 
 /**
- * Handle GitHub OAuth callback
+ * Handle GitHub OAuth callback using H3
  * GET /auth/github/callback
  */
-export async function handleGitHubCallback(request: Request): Promise<Response> {
+export async function handleGitHubCallback(event: H3Event): Promise<Response> {
 	try {
-		const url = new URL(request.url);
+		const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
 		const code = url.searchParams.get('code');
 		const state = url.searchParams.get('state');
 		
@@ -17,9 +18,8 @@ export async function handleGitHubCallback(request: Request): Promise<Response> 
 			return new Response('Bad Request: Missing parameters', { status: 400 });
 		}
 		
-		// Get stored state from cookies
-		const cookieHeader = request.headers.get('Cookie');
-		const storedState = parseOAuthState(cookieHeader, 'github');
+		// Get stored state from H3 cookies
+		const storedState = getOAuthState(event, 'github');
 		
 		// Validate state (CSRF protection)
 		if (!validateOAuthState(state, storedState)) {
@@ -98,6 +98,9 @@ export async function handleGitHubCallback(request: Request): Promise<Response> 
 		const sessionToken = generateSessionToken();
 		const session = await createSession(sessionToken, user.id);
 		
+		// Set session cookie using H3
+		setSessionTokenCookie(event, sessionToken, session.expiresAt);
+		
 		// Create success response with redirect
 		const response = new Response(null, {
 			status: 302,
@@ -105,9 +108,6 @@ export async function handleGitHubCallback(request: Request): Promise<Response> 
 				Location: '/', // Redirect to app homepage
 			},
 		});
-		
-		// Set session cookie
-		setSessionTokenCookie(response, sessionToken, session.expiresAt);
 		
 		return response;
 	} catch (error) {

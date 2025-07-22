@@ -12,6 +12,18 @@ export interface ServerConfig {
     secure?: boolean;
     sameSite?: 'lax' | 'strict' | 'none';
   };
+  oauth?: {
+    google?: {
+      clientId: string;
+      clientSecret: string;
+      redirectUri?: string;
+    };
+    github?: {
+      clientId: string;
+      clientSecret: string;
+      redirectUri?: string;
+    };
+  };
 }
 
 export interface DatabaseConfig {

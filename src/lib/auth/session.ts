@@ -1,5 +1,7 @@
 import prisma from '@/lib/prisma';
 import type { User, Session } from '@prisma/client';
+import { setCookie, deleteCookie, getCookie, type H3Event } from 'h3';
+import { isProduction } from '@/config/index.js';
 
 export interface SessionWithUser {
 	session: Session;
@@ -109,54 +111,50 @@ export async function invalidateAllUserSessions(userId: string): Promise<void> {
 }
 
 /**
- * Set session token cookie (for server-side response)
+ * Set session token cookie using H3
  */
-export function setSessionTokenCookie(response: any, token: string, expiresAt: Date): void {
-	const isProduction = process.env.NODE_ENV === 'production';
-	const cookieValue = `session=${token}; HttpOnly; SameSite=Lax; Path=/; Expires=${expiresAt.toUTCString()}${isProduction ? '; Secure' : ''}`;
-	
-	if (response.headers) {
-		response.headers.append('Set-Cookie', cookieValue);
-	} else if (response.setHeader) {
-		response.setHeader('Set-Cookie', cookieValue);
-	}
+export function setSessionTokenCookie(event: H3Event, token: string, expiresAt: Date): void {
+	setCookie(event, 'session', token, {
+		httpOnly: true,
+		sameSite: 'lax',
+		path: '/',
+		expires: expiresAt,
+		secure: isProduction(),
+	});
 }
 
 /**
- * Delete session token cookie (for logout)
+ * Delete session token cookie using H3
  */
-export function deleteSessionTokenCookie(response: any): void {
-	const isProduction = process.env.NODE_ENV === 'production';
-	const cookieValue = `session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${isProduction ? '; Secure' : ''}`;
-	
-	if (response.headers) {
-		response.headers.append('Set-Cookie', cookieValue);
-	} else if (response.setHeader) {
-		response.setHeader('Set-Cookie', cookieValue);
-	}
+export function deleteSessionTokenCookie(event: H3Event): void {
+	deleteCookie(event, 'session', {
+		httpOnly: true,
+		sameSite: 'lax',
+		path: '/',
+		secure: isProduction(),
+	});
 }
 
 /**
- * Parse session token from cookie string
+ * Get session token from H3 event cookies
  */
-export function parseSessionToken(cookieHeader: string | null): string | null {
-	if (!cookieHeader) return null;
-	
-	const cookies = cookieHeader.split(';').map(cookie => cookie.trim());
-	const sessionCookie = cookies.find(cookie => cookie.startsWith('session='));
-	
-	if (!sessionCookie) return null;
-	
-	return sessionCookie.split('=')[1] || null;
+export function getSessionToken(event: H3Event): string | null {
+	return getCookie(event, 'session') || null;
 }
 
 /**
  * Get current session from request (for middleware/context)
  */
 export async function getCurrentSession(token: string | null): Promise<SessionWithUser | null> {
-
-
 	if (!token) return null;
 	
 	return validateSessionToken(token);
+}
+
+/**
+ * Get current session from H3 event (extracts token from cookies)
+ */
+export async function getCurrentSessionFromEvent(event: H3Event): Promise<SessionWithUser | null> {
+	const token = getSessionToken(event);
+	return getCurrentSession(token);
 }

@@ -1,16 +1,21 @@
 import { google, generateState, generateCodeVerifier, setOAuthStateCookie, setCodeVerifierCookie } from '@/lib/auth';
+import { type H3Event } from 'h3';
 
 /**
- * Initiate Google OAuth flow
+ * Initiate Google OAuth flow using H3
  * GET /auth/google
  */
-export async function handleGoogleLogin(request: Request): Promise<Response> {
+export async function handleGoogleLogin(event: H3Event): Promise<Response> {
 	try {
 		const state = generateState();
 		const codeVerifier = generateCodeVerifier();
 		
 		// Create authorization URL with PKCE
 		const url = google.createAuthorizationURL(state, codeVerifier, ['openid', 'profile', 'email']);
+		
+		// Set state and code verifier cookies using H3
+		setOAuthStateCookie(event, state, 'google');
+		setCodeVerifierCookie(event, codeVerifier, 'google');
 		
 		// Create response with redirect
 		const response = new Response(null, {
@@ -19,10 +24,6 @@ export async function handleGoogleLogin(request: Request): Promise<Response> {
 				Location: url.toString(),
 			},
 		});
-		
-		// Set state and code verifier cookies for security
-		setOAuthStateCookie(response, state, 'google');
-		setCodeVerifierCookie(response, codeVerifier, 'google');
 		
 		return response;
 	} catch (error) {

@@ -1,14 +1,15 @@
-import { getCurrentSession, type SessionWithUser } from '@/lib/auth';
+import { getCurrentSessionFromEvent, type SessionWithUser } from '@/lib/auth';
 import type { Context } from '@/api/schema/builder';
+import type { H3Event } from 'h3';
 
 /**
- * Authentication middleware for GraphQL Yoga
+ * Authentication middleware for GraphQL Yoga using H3
  * Validates session and sets user context
  */
-export async function authMiddleware(request: Request): Promise<Partial<Context>> {
+export async function authMiddleware(event: H3Event): Promise<Partial<Context>> {
 	try {
-		// Get current session from request
-		const sessionData: SessionWithUser | null = await getCurrentSession(request);
+		// Get current session from H3 event cookies
+		const sessionData: SessionWithUser | null = await getCurrentSessionFromEvent(event);
 		
 		// If no session found, return empty context
 		if (!sessionData) {
@@ -40,11 +41,30 @@ export async function authMiddleware(request: Request): Promise<Partial<Context>
 
 /**
  * Enhanced context factory that combines auth middleware with other context
+ * Note: This needs to be updated for H3 integration with GraphQL Yoga
  */
 export function createGraphQLContext(container: any) {
 	return async ({ request }: { request: Request }): Promise<Context> => {
-		// Get auth context
-		const authContext = await authMiddleware(request);
+		// TODO: This function needs to be updated when GraphQL Yoga is integrated with H3 events
+		// For now, we'll need to convert Request to H3Event or update the GraphQL Yoga integration
+		console.warn('createGraphQLContext needs H3 integration update');
+		
+		// Temporary fallback - return empty auth context
+		return {
+			user: null,
+			session: null,
+			container,
+		} as Context;
+	};
+}
+
+/**
+ * H3-compatible context factory for GraphQL Yoga
+ */
+export function createH3GraphQLContext(container: any) {
+	return async (event: H3Event): Promise<Context> => {
+		// Get auth context from H3 event
+		const authContext = await authMiddleware(event);
 		
 		// Combine with other context data
 		return {
@@ -55,13 +75,13 @@ export function createGraphQLContext(container: any) {
 }
 
 /**
- * CSRF protection middleware
+ * CSRF protection middleware using H3
  * Validates origin header for non-GET requests
  */
-export function csrfMiddleware(request: Request): boolean {
-	const method = request.method;
-	const origin = request.headers.get('Origin');
-	const host = request.headers.get('Host');
+export function csrfMiddleware(event: H3Event): boolean {
+	const method = event.node.req.method;
+	const origin = event.node.req.headers.origin;
+	const host = event.node.req.headers.host;
 	
 	// Allow GET and HEAD requests (they should be safe)
 	if (method === 'GET' || method === 'HEAD') {
@@ -86,20 +106,40 @@ export function csrfMiddleware(request: Request): boolean {
 }
 
 /**
- * Wrapper for GraphQL Yoga plugins/middleware integration
+ * H3-compatible plugin for GraphQL Yoga authentication
+ * Note: This needs to be integrated with the GraphQL Yoga H3 setup
+ */
+export const h3AuthPlugin = {
+	/**
+	 * Plugin for GraphQL Yoga to handle authentication with H3 events
+	 */
+	onRequest: async (event: H3Event, context: any) => {
+		// CSRF protection
+		if (!csrfMiddleware(event)) {
+			throw new Error('CSRF validation failed');
+		}
+		
+		// Add auth context
+		const authContext = await authMiddleware(event);
+		Object.assign(context, authContext);
+	},
+};
+
+/**
+ * Legacy plugin for backwards compatibility
+ * @deprecated Use h3AuthPlugin instead
  */
 export const luciaAuthPlugin = {
 	/**
 	 * Plugin for GraphQL Yoga to handle Lucia authentication
 	 */
 	onRequest: async (request: Request, context: any) => {
-		// CSRF protection
-		if (!csrfMiddleware(request)) {
-			throw new Error('CSRF validation failed');
-		}
+		console.warn('luciaAuthPlugin is deprecated, use h3AuthPlugin with H3 events instead');
 		
-		// Add auth context
-		const authContext = await authMiddleware(request);
-		Object.assign(context, authContext);
+		// Temporary fallback
+		Object.assign(context, {
+			user: null,
+			session: null,
+		});
 	},
 };

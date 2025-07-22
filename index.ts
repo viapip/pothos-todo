@@ -54,75 +54,32 @@ async function startServer() {
       })
     );
     
-    // Auth routes with session support
+    // Auth routes with native H3 event handling
     app.use('/auth/google', eventHandler(async (event) => {
-      // Convert Node.js request to Web API Request
-      const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
-      const request = new Request(url.toString(), {
-        method: event.node.req.method,
-        headers: event.node.req.headers as HeadersInit,
-        body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
-      });
-      
-      return await handleGoogleLogin(request);
+      return await handleGoogleLogin(event);
     }));
     
     app.use('/auth/google/callback', eventHandler(async (event) => {
-      const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
-      const request = new Request(url.toString(), {
-        method: event.node.req.method,
-        headers: event.node.req.headers as HeadersInit,
-        body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
-      });
-      
-      return await handleGoogleCallback(request);
+      return await handleGoogleCallback(event);
     }));
     
     app.use('/auth/github', eventHandler(async (event) => {
-      const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
-      const request = new Request(url.toString(), {
-        method: event.node.req.method,
-        headers: event.node.req.headers as HeadersInit,
-        body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
-      });
-      
-      return await handleGitHubLogin(request);
+      return await handleGitHubLogin(event);
     }));
     
     app.use('/auth/github/callback', eventHandler(async (event) => {
-      const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
-      const request = new Request(url.toString(), {
-        method: event.node.req.method,
-        headers: event.node.req.headers as HeadersInit,
-        body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
-      });
-      
-      return await handleGitHubCallback(request);
+      return await handleGitHubCallback(event);
     }));
     
     app.use('/auth/logout', eventHandler(async (event) => {
       if (event.node.req.method === 'POST') {
-        const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
-        const request = new Request(url.toString(), {
-          method: event.node.req.method,
-          headers: event.node.req.headers as HeadersInit,
-          body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
-        });
-        
-        return await handleLogout(request);
+        return await handleLogout(event);
       }
     }));
     
     app.use('/auth/logout/all', eventHandler(async (event) => {
       if (event.node.req.method === 'POST') {
-        const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
-        const request = new Request(url.toString(), {
-          method: event.node.req.method,
-          headers: event.node.req.headers as HeadersInit,
-          body: event.node.req.method === 'POST' || event.node.req.method === 'PUT' || event.node.req.method === 'PATCH' ? event.node.req : undefined,
-        });
-        
-        return await handleLogoutAll(request);
+        return await handleLogoutAll(event);
       }
     }));
     

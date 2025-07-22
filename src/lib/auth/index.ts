@@ -7,8 +7,9 @@ export {
 	invalidateAllUserSessions,
 	setSessionTokenCookie,
 	deleteSessionTokenCookie,
-	parseSessionToken,
+	getSessionToken,
 	getCurrentSession,
+	getCurrentSessionFromEvent,
 	type SessionWithUser,
 } from './session';
 
@@ -20,8 +21,8 @@ export {
 	generateCodeVerifier,
 	setOAuthStateCookie,
 	setCodeVerifierCookie,
-	parseOAuthState,
-	parseCodeVerifier,
+	getOAuthState,
+	getCodeVerifier,
 	validateOAuthState,
 } from './oauth';
 

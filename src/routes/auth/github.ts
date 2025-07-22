@@ -1,15 +1,19 @@
 import { github, generateState, setOAuthStateCookie } from '@/lib/auth';
+import { type H3Event } from 'h3';
 
 /**
- * Initiate GitHub OAuth flow
+ * Initiate GitHub OAuth flow using H3
  * GET /auth/github
  */
-export async function handleGitHubLogin(request: Request): Promise<Response> {
+export async function handleGitHubLogin(event: H3Event): Promise<Response> {
 	try {
 		const state = generateState();
 		
 		// Create authorization URL
 		const url = github.createAuthorizationURL(state, ['user:email']);
+		
+		// Set state cookie using H3
+		setOAuthStateCookie(event, state, 'github');
 		
 		// Create response with redirect
 		const response = new Response(null, {
@@ -18,9 +22,6 @@ export async function handleGitHubLogin(request: Request): Promise<Response> {
 				Location: url.toString(),
 			},
 		});
-		
-		// Set state cookie for security
-		setOAuthStateCookie(response, state, 'github');
 		
 		return response;
 	} catch (error) {

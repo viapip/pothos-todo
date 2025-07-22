@@ -249,6 +249,24 @@ export function getSessionConfig() {
 }
 
 /**
+ * Get OAuth configuration
+ */
+export function getOAuthConfig() {
+  return getConfigValueSafe('server.oauth', {
+    google: {
+      clientId: '',
+      clientSecret: '',
+      redirectUri: 'http://localhost:4000/auth/google/callback',
+    },
+    github: {
+      clientId: '',
+      clientSecret: '',
+      redirectUri: 'http://localhost:4000/auth/github/callback',
+    },
+  });
+}
+
+/**
  * Get database configuration
  */
 export function getDatabaseConfig() {
