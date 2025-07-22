@@ -1,4 +1,5 @@
 import { builder } from '../builder.js';
+import prisma from '@/lib/prisma';
 
 builder.queryFields((t) => ({
 	currentUser: t.prismaField({
@@ -10,11 +11,11 @@ builder.queryFields((t) => ({
 				return null;
 			}
 
-			// Use Prisma query to get full user data
-			return {
+			// Use Prisma to get full user data
+			return prisma.user.findUnique({
 				where: { id: context.session.user.id },
 				...query,
-			};
+			});
 		},
 	}),
 }));

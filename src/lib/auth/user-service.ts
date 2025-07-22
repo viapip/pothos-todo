@@ -7,7 +7,7 @@ export class UserService {
 	/**
 	 * Register new user with email/password
 	 */
-	static async registerUser(email: string, password: string, name?: string): Promise<{ user: User; session: SessionWithUser }> {
+	static async registerUser(email: string, password: string, name?: string): Promise<{ user: User }> {
 		// Validate input
 		const emailValidation = validateEmail(email);
 		if (!emailValidation.isValid) {
@@ -40,20 +40,14 @@ export class UserService {
 			}
 		});
 
-		// Create session
-		const sessionToken = generateSessionToken();
-		const session = await createSession(sessionToken, user.id);
-
-		return {
-			user,
-			session: { session, user }
-		};
+		// Note: Session management is now handled by H3 sessions in GraphQL mutations
+		return { user };
 	}
 
 	/**
 	 * Login user with email/password
 	 */
-	static async loginUser(email: string, password: string): Promise<{ user: User; session: SessionWithUser }> {
+	static async loginUser(email: string, password: string): Promise<{ user: User }> {
 		// Validate input
 		const emailValidation = validateEmail(email);
 		if (!emailValidation.isValid) {
@@ -84,14 +78,8 @@ export class UserService {
 			throw new Error('Invalid email or password');
 		}
 
-		// Create session
-		const sessionToken = generateSessionToken();
-		const session = await createSession(sessionToken, user.id);
-
-		return {
-			user,
-			session: { session, user }
-		};
+		// Note: Session management is now handled by H3 sessions in GraphQL mutations
+		return { user };
 	}
 
 	/**

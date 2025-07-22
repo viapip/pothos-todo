@@ -1,6 +1,6 @@
 import { builder } from '../builder.js';
 import { UserService } from '@/lib/auth/user-service';
-import { invalidateAllUserSessions, setSessionTokenCookie, deleteSessionTokenCookie } from '@/lib/auth';
+import { invalidateAllUserSessions, createH3Session, clearH3Session } from '@/lib/auth';
 import type { H3Event } from 'h3';
 
 // Helper to get H3 event from context
@@ -22,16 +22,16 @@ builder.mutationFields((t) => ({
 		},
 		resolve: async (parent, args, context) => {
 			try {
-				const { user, session } = await UserService.registerUser(
+				const { user } = await UserService.registerUser(
 					args.email,
 					args.password,
 					args.name || undefined
 				);
 
-				// Set session cookie
+				// Create H3 session
 				const event = getH3EventFromContext(context);
 				if (event) {
-					setSessionTokenCookie(event, session.session.id, session.session.expiresAt);
+					await createH3Session(event, user.id);
 				}
 
 				return true;
@@ -50,16 +50,15 @@ builder.mutationFields((t) => ({
 		},
 		resolve: async (parent, args, context) => {
 			try {
-				const { user, session } = await UserService.loginUser(
+				const { user } = await UserService.loginUser(
 					args.email,
 					args.password
 				);
 
-				// Set session cookie
+				// Create H3 session
 				const event = getH3EventFromContext(context);
-				console.log('event', event);
 				if (event) {
-					setSessionTokenCookie(event, session.session.id, session.session.expiresAt);
+					await createH3Session(event, user.id);
 				}
 
 				return true;
@@ -77,10 +76,10 @@ builder.mutationFields((t) => ({
 		},
 		resolve: async (parent, args, context) => {
 			try {
-				// Clear session cookie
+				// Clear H3 session
 				const event = getH3EventFromContext(context);
 				if (event) {
-					deleteSessionTokenCookie(event);
+					await clearH3Session(event);
 				}
 
 				return true;
@@ -165,10 +164,10 @@ builder.mutationFields((t) => ({
 				// Delete account
 				await UserService.deleteAccount(context.session.user.id);
 
-				// Clear session cookie
+				// Clear H3 session
 				const event = getH3EventFromContext(context);
 				if (event) {
-					deleteSessionTokenCookie(event);
+					await clearH3Session(event);
 				}
 
 				return true;

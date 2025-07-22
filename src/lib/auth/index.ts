@@ -11,6 +11,12 @@ export {
 	getCurrentSession,
 	getCurrentSessionFromEvent,
 	type SessionWithUser,
+	// H3 Session Management
+	getCurrentSessionFromEventH3,
+	createH3Session,
+	clearH3Session,
+	updateH3SessionActivity,
+	type H3SessionData,
 } from './session';
 
 // OAuth providers

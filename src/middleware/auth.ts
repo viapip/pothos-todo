@@ -1,15 +1,15 @@
-import { getCurrentSessionFromEvent, type SessionWithUser } from '@/lib/auth';
+import { getCurrentSessionFromEventH3, type SessionWithUser } from '@/lib/auth';
 import type { Context } from '@/api/schema/builder';
 import type { H3Event } from 'h3';
 
 /**
- * Authentication middleware for GraphQL Yoga using H3
- * Validates session and sets user context
+ * Authentication middleware for GraphQL Yoga using H3 useSession
+ * Validates session and sets user context using H3's built-in session management
  */
 export async function authMiddleware(event: H3Event): Promise<Partial<Context>> {
 	try {
-		// Get current session from H3 event cookies
-		const sessionData: SessionWithUser | null = await getCurrentSessionFromEvent(event);
+		// Get current session using H3 useSession
+		const sessionData: SessionWithUser | null = await getCurrentSessionFromEventH3(event);
 		
 		// If no session found, return empty context
 		if (!sessionData) {
@@ -19,17 +19,12 @@ export async function authMiddleware(event: H3Event): Promise<Partial<Context>> 
 			};
 		}
 		
-		// Map Prisma User to domain User (if needed)
-		// For now, we'll use Prisma User directly
-		// In a real app, you might want to convert this to your domain User type
-		const domainUser = sessionData.user as any; // Type casting for now
-		
 		return {
-			user: domainUser,
+			user: sessionData.user,
 			session: sessionData,
 		};
 	} catch (error) {
-		console.error('Error in auth middleware:', error);
+		console.error('Error in H3 auth middleware:', error);
 		
 		// In case of error, return empty context
 		return {
@@ -41,15 +36,13 @@ export async function authMiddleware(event: H3Event): Promise<Partial<Context>> 
 
 /**
  * Enhanced context factory that combines auth middleware with other context
- * Note: This needs to be updated for H3 integration with GraphQL Yoga
+ * @deprecated Use createH3GraphQLContext instead
  */
 export function createGraphQLContext(container: any) {
 	return async ({ request }: { request: Request }): Promise<Context> => {
-		// TODO: This function needs to be updated when GraphQL Yoga is integrated with H3 events
-		// For now, we'll need to convert Request to H3Event or update the GraphQL Yoga integration
-		console.warn('createGraphQLContext needs H3 integration update');
+		console.warn('createGraphQLContext is deprecated, use createH3GraphQLContext instead');
 		
-		// Temporary fallback - return empty auth context
+		// Fallback - return empty auth context
 		return {
 			user: null,
 			session: null,
@@ -59,11 +52,11 @@ export function createGraphQLContext(container: any) {
 }
 
 /**
- * H3-compatible context factory for GraphQL Yoga
+ * H3-compatible context factory for GraphQL Yoga using H3 sessions
  */
 export function createH3GraphQLContext(container: any) {
 	return async (event: H3Event): Promise<Context> => {
-		// Get auth context from H3 event
+		// Get auth context from H3 event using H3 sessions
 		const authContext = await authMiddleware(event);
 		
 		// Combine with other context data
@@ -106,12 +99,11 @@ export function csrfMiddleware(event: H3Event): boolean {
 }
 
 /**
- * H3-compatible plugin for GraphQL Yoga authentication
- * Note: This needs to be integrated with the GraphQL Yoga H3 setup
+ * H3-compatible plugin for GraphQL Yoga authentication using H3 sessions
  */
 export const h3AuthPlugin = {
 	/**
-	 * Plugin for GraphQL Yoga to handle authentication with H3 events
+	 * Plugin for GraphQL Yoga to handle authentication with H3 events and H3 sessions
 	 */
 	onRequest: async (event: H3Event, context: any) => {
 		// CSRF protection
@@ -119,7 +111,7 @@ export const h3AuthPlugin = {
 			throw new Error('CSRF validation failed');
 		}
 		
-		// Add auth context
+		// Add auth context using H3 sessions
 		const authContext = await authMiddleware(event);
 		Object.assign(context, authContext);
 	},
@@ -127,14 +119,14 @@ export const h3AuthPlugin = {
 
 /**
  * Legacy plugin for backwards compatibility
- * @deprecated Use h3AuthPlugin instead
+ * @deprecated Use h3AuthPlugin with H3 sessions instead
  */
 export const luciaAuthPlugin = {
 	/**
 	 * Plugin for GraphQL Yoga to handle Lucia authentication
 	 */
 	onRequest: async (request: Request, context: any) => {
-		console.warn('luciaAuthPlugin is deprecated, use h3AuthPlugin with H3 events instead');
+		console.warn('luciaAuthPlugin is deprecated, use h3AuthPlugin with H3 sessions instead');
 		
 		// Temporary fallback
 		Object.assign(context, {
