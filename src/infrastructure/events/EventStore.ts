@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../domain/events/DomainEvent.js';
+import type { DomainEvent } from '../../domain/events/DomainEvent.js';
 
 export interface StoredEvent {
   id: string;

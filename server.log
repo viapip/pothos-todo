@@ -1,0 +1,59 @@
+$ bun run index.ts
+🕐 17:17:44.104 ℹ️ INFO: [36mServer started[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:18:00.959 ℹ️ INFO: [36mRequest[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:18:07.625 ℹ️ INFO: [36mRequest[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:18:44.011 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:19:44.012 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:20:44.013 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:21:44.013 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:22:44.014 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:23:44.016 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:24:44.017 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:25:44.018 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:26:44.019 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:27:44.019 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:28:44.021 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:29:44.021 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:30:44.022 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:31:44.026 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+🕐 17:32:44.028 ℹ️ INFO: [36mRunning subscription cleanup[39m
+    service: "pothos-todo"
+    version: "1.0.0"
+Received SIGTERM, shutting down gracefully...
+🕐 17:33:08.498 ℹ️ INFO: [36mReceived SIGTERM, shutting down gracefully[39m
+    service: "pothos-todo"
+    version: "1.0.0"

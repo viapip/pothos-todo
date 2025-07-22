@@ -1,4 +1,4 @@
-import { PrismaClient, type TodoList as PrismaTodoList } from '@prisma/client';
+import type { PrismaClient, TodoList as PrismaTodoList } from '@prisma/client';
 import type { TodoListRepository } from '../../domain/repositories/TodoListRepository.js';
 import { TodoList } from '../../domain/aggregates/TodoList.js';
 

@@ -1,4 +1,4 @@
-import { Todo } from '../aggregates/Todo.js';
+import type { Todo } from '../aggregates/Todo.js';
 
 export interface TodoRepository {
   findById(id: string): Promise<Todo | null>;

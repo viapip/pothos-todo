@@ -38,6 +38,19 @@ export default {
     password: 'password',
   },
 
+  // Redis Configuration
+  redis: {
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    password: process.env.REDIS_PASSWORD || 'redispassword',
+    maxRetriesPerRequest: 3,
+    db: 0,
+    keyPrefix: 'pothos-todo:',
+    connectTimeout: 10000,
+    lazyConnect: true,
+  },
+
   // Logger Configuration
   logger: {
     level: 'info',
@@ -80,6 +93,24 @@ export default {
     topicSeparator: ':',
   },
 
+  // Security Configuration
+  security: {
+    rateLimit: {
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: process.env.NODE_ENV === 'development' ? 1000 : 100,
+      message: 'Too many requests from this IP, please try again later.',
+    },
+    cors: {
+      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    },
+    headers: {
+      hsts: process.env.NODE_ENV === 'production',
+      contentSecurityPolicy: process.env.NODE_ENV === 'production',
+    },
+  },
+
   // Docker Configuration
   docker: {
     postgres: {
@@ -89,6 +120,12 @@ export default {
       database: 'pothos_todo',
       user: 'postgres',
       password: 'password',
+    },
+    redis: {
+      image: 'redis:7-alpine',
+      container: 'pothos-todo-redis',
+      port: 6379,
+      password: 'redispassword',
     },
     qdrant: {
       image: 'qdrant/qdrant:latest',

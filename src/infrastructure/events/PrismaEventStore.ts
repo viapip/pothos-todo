@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import type { EventStore, StoredEvent } from './EventStore.js';
-import { DomainEvent } from '../../domain/events/DomainEvent.js';
+import type { DomainEvent } from '../../domain/events/DomainEvent.js';
 
 export class PrismaEventStore implements EventStore {
   constructor(private readonly prisma: PrismaClient) {}

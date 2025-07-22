@@ -1,4 +1,4 @@
-import { DeleteTodoCommand } from '../commands/DeleteTodoCommand.js';
+import type { DeleteTodoCommand } from '../commands/DeleteTodoCommand.js';
 import type { TodoRepository } from '../../domain/repositories/TodoRepository.js';
 import type { EventPublisher } from '../../infrastructure/events/EventPublisher.js';
 import { logger } from '../../logger.js';

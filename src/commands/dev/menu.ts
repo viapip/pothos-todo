@@ -140,10 +140,10 @@ export default class DevMenu extends Command {
     this.log(chalk.gray('Starting build watch in the background...'));
     
     // Start build watch in background
-    const buildWatchProcess = executeCommand('bun', ['run', 'build:watch'], {
+    void executeCommand('bun', ['run', 'build:watch'], {
       silent: true,
       showSpinner: false,
-    });
+    }); // Start build watch in background, don't await
 
     // Wait a bit for build to start
     await new Promise(resolve => setTimeout(resolve, 2000));

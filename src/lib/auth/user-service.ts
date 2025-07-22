@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { hashPassword, verifyPassword, validateEmail, validatePassword } from './password';
-import { generateSessionToken, createSession, type SessionWithUser } from './session';
+import { generateSessionToken, createSession } from './session';
 import type { User } from '@prisma/client';
 
 export class UserService {

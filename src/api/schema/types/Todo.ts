@@ -1,6 +1,6 @@
 import { builder } from '../builder.js';
-import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';
-import prisma from '@/lib/prisma';
+// import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';
+// import prisma from '@/lib/prisma';
 import * as TodoCrud from '@/graphql/__generated__/Todo';
 
 
@@ -9,10 +9,10 @@ export const TodoType = builder.prismaNode('Todo', {
   findUnique: (id) => ({ id }),
   fields: (t) => ({
     ...(() => {
-      const { id, ...rest } = TodoCrud.TodoObject.fields(t);
-      return rest;
+      const { id: _, ...rest } = TodoCrud.TodoObject.fields?.(t) || {}; // eslint-disable-line @typescript-eslint/no-unused-vars 
+      return rest || {};
     })(),
-  }),
+  }), 
 })
 
 
@@ -20,7 +20,9 @@ export const TodoQueries = builder.queryFields((t) => {
   const findFirst = TodoCrud.findFirstTodoQueryObject(t);
   const findMany = TodoCrud.findManyTodoQueryObject(t);
   const findUnique = TodoCrud.findUniqueTodoQueryObject(t);
-  const count = TodoCrud.countTodoQueryObject(t);
+  const _ = TodoCrud.countTodoQueryObject(t);
+  // count result intentionally unused - available for potential future use
+  void _; // Mark as intentionally unused
   return {
     findFirst: t.prismaField({
       ...findFirst,

@@ -1,6 +1,6 @@
 import type { EventPublisher } from './EventPublisher.js';
 import type { EventStore } from './EventStore.js';
-import { DomainEvent } from '../../domain/events/DomainEvent.js';
+import type { DomainEvent } from '../../domain/events/DomainEvent.js';
 import { EventEmitter } from 'events';
 
 export class InMemoryEventPublisher extends EventEmitter implements EventPublisher {

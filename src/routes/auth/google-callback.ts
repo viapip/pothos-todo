@@ -1,7 +1,7 @@
 import { google, getOAuthState, getCodeVerifier, validateOAuthState, handleGoogleOAuth, generateSessionToken, createSession, setSessionTokenCookie, type GoogleUserInfo } from '@/lib/auth';
 import { decodeIdToken } from 'arctic';
 import type { OAuth2Tokens } from 'arctic';
-import { type H3Event } from 'h3';
+import type { H3Event } from 'h3';
 
 /**
  * Handle Google OAuth callback using H3

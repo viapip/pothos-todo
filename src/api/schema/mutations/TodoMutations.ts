@@ -4,9 +4,10 @@ import prisma from '@/lib/prisma';
 import * as TodoCrud from '@/graphql/__generated__/Todo';
 import { PriorityEnum as DomainPriorityEnum } from '../../../domain/value-objects/Priority.js';
 import { CreateTodoCommand } from '../../../application/commands/CreateTodoCommand.js';
-import { UpdateTodoCommand } from '../../../application/commands/UpdateTodoCommand.js';
-import { CompleteTodoCommand } from '../../../application/commands/CompleteTodoCommand.js';
-import { DeleteTodoCommand } from '../../../application/commands/DeleteTodoCommand.js';
+import { subscriptionManager, SubscriptionManager } from '../../../lib/subscriptions/manager.js';
+// import { UpdateTodoCommand } from '../../../application/commands/UpdateTodoCommand.js';
+// import { CompleteTodoCommand } from '../../../application/commands/CompleteTodoCommand.js';
+// import { DeleteTodoCommand } from '../../../application/commands/DeleteTodoCommand.js';
 
 export const CreateTodoInput = builder.inputType('CreateTodoInput', {
   fields: (t) => ({
@@ -40,7 +41,7 @@ export const TodoMutations = builder.mutationFields((t) => {
     args: {
       input: t.arg({ type: CreateTodoInput, required: true }),
     },
-    resolve: async (query, root, args, context) => {
+    resolve: async (query, _root, args, context) => {
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
@@ -58,10 +59,18 @@ export const TodoMutations = builder.mutationFields((t) => {
 
       await context.container.createTodoHandler.handle(command);
 
-      return await prisma.todo.findUnique({
+      const newTodo = await prisma.todo.findUnique({
         ...query,
         where: { id: todoId },
       });
+
+      if (newTodo) {
+        // Publish subscription event
+        const event = SubscriptionManager.createTodoCreatedEvent(newTodo, userId);
+        subscriptionManager.publish(event);
+      }
+
+      return newTodo;
     },
   }),
 
@@ -72,7 +81,7 @@ export const TodoMutations = builder.mutationFields((t) => {
       id: t.arg.id({ required: true }),
       input: t.arg({ type: UpdateTodoInput, required: true }),
     },
-    resolve: async (query, root, args, context) => {
+    resolve: async (query, _root, args, context) => {
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
@@ -95,6 +104,10 @@ export const TodoMutations = builder.mutationFields((t) => {
         data: updateData,
       });
 
+      // Publish subscription event
+      const event = SubscriptionManager.createTodoUpdatedEvent(todo, userId);
+      subscriptionManager.publish(event);
+
       return todo;
     },
   }),
@@ -105,7 +118,7 @@ export const TodoMutations = builder.mutationFields((t) => {
     args: {
       id: t.arg.id({ required: true }),
     },
-    resolve: async (query, root, args, context) => {
+    resolve: async (query, _root, args, context) => {
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
@@ -135,7 +148,7 @@ export const TodoMutations = builder.mutationFields((t) => {
     args: {
       id: t.arg.id({ required: true }),
     },
-    resolve: async (query, root, args, context) => {
+    resolve: async (query, _root, args, context) => {
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
@@ -163,7 +176,7 @@ export const TodoMutations = builder.mutationFields((t) => {
     args: {
       id: t.arg.id({ required: true }),
     },
-    resolve: async (root, args, context) => {
+    resolve: async (_root, args, context) => {
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
@@ -177,6 +190,16 @@ export const TodoMutations = builder.mutationFields((t) => {
         where: { id: args.id },
       });
 
+      // Publish subscription event
+      if (existingTodo.todoListId) {
+        const event = SubscriptionManager.createTodoDeletedEvent(
+          args.id, 
+          existingTodo.todoListId, 
+          userId
+        );
+        subscriptionManager.publish(event);
+      }
+
       return true;
     },
   }),
@@ -188,7 +211,7 @@ export const TodoMutations = builder.mutationFields((t) => {
       id: t.arg.id({ required: true }),
       status: t.arg({ type: TodoStatusEnum, required: true }),
     },
-    resolve: async (query, root, args, context) => {
+    resolve: async (query, _root, args, context) => {
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 

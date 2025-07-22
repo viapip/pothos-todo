@@ -1,13 +1,54 @@
-import bcrypt from 'bcrypt';
+import { hash, verify } from '@node-rs/bcrypt';
+import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
 
-const SALT_ROUNDS = 12;
+const BCRYPT_ROUNDS = 12;
 
+// Argon2 configuration (more secure, slower)
+const ARGON2_CONFIG = {
+	memoryCost: 65536, // 64 MB
+	timeCost: 3,       // 3 iterations
+	outputLen: 32,     // 32 bytes output
+	parallelism: 1,    // Single thread
+};
+
+/**
+ * Hash password using bcrypt (fast, compatible)
+ */
 export async function hashPassword(password: string): Promise<string> {
-	return bcrypt.hash(password, SALT_ROUNDS);
+	return hash(password, BCRYPT_ROUNDS);
 }
 
+/**
+ * Verify password against bcrypt hash
+ */
 export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-	return bcrypt.compare(password, hashedPassword);
+	return verify(password, hashedPassword);
+}
+
+/**
+ * Hash password using Argon2 (more secure, recommended for new applications)
+ */
+export async function hashPasswordSecure(password: string): Promise<string> {
+	return argonHash(password, ARGON2_CONFIG);
+}
+
+/**
+ * Verify password against Argon2 hash
+ */
+export async function verifyPasswordSecure(password: string, hashedPassword: string): Promise<boolean> {
+	return argonVerify(hashedPassword, password);
+}
+
+/**
+ * Auto-detect hash type and verify accordingly
+ */
+export async function verifyPasswordAuto(password: string, hashedPassword: string): Promise<boolean> {
+	// Argon2 hashes start with $argon2
+	if (hashedPassword.startsWith('$argon2')) {
+		return verifyPasswordSecure(password, hashedPassword);
+	}
+	// Default to bcrypt
+	return verifyPassword(password, hashedPassword);
 }
 
 export function validatePassword(password: string): { isValid: boolean; error?: string } {

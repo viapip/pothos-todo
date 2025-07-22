@@ -4,7 +4,7 @@ import { PrismaTodoListRepository } from '../persistence/PrismaTodoListRepositor
 import { PrismaUserRepository } from '../persistence/PrismaUserRepository.js';
 import { PrismaEventStore } from '../events/PrismaEventStore.js';
 import { InMemoryEventPublisher } from '../events/InMemoryEventPublisher.js';
-import { EventHandlerRegistry } from '../events/EventHandlerRegistry.js';
+// import { EventHandlerRegistry } from '../events/EventHandlerRegistry.js';
 import { CreateTodoHandler } from '../../application/handlers/CreateTodoHandler.js';
 import { UpdateTodoHandler } from '../../application/handlers/UpdateTodoHandler.js';
 import { CompleteTodoHandler } from '../../application/handlers/CompleteTodoHandler.js';
@@ -19,7 +19,7 @@ export class Container {
   private readonly _userRepository: PrismaUserRepository;
   private readonly _eventStore: PrismaEventStore;
   private readonly _eventPublisher: InMemoryEventPublisher;
-  private readonly _eventHandlerRegistry: EventHandlerRegistry;
+  // private readonly _eventHandlerRegistry: EventHandlerRegistry; 
   
   private readonly _createTodoHandler: CreateTodoHandler;
   private readonly _updateTodoHandler: UpdateTodoHandler;
@@ -35,7 +35,7 @@ export class Container {
     
     this._eventStore = new PrismaEventStore(this._prisma);
     this._eventPublisher = new InMemoryEventPublisher(this._eventStore);
-    this._eventHandlerRegistry = new EventHandlerRegistry(this._eventPublisher);
+    // this._eventHandlerRegistry = new EventHandlerRegistry(this._eventPublisher);
     
     this._createTodoHandler = new CreateTodoHandler(this._todoRepository, this._eventPublisher);
     this._updateTodoHandler = new UpdateTodoHandler(this._todoRepository, this._eventPublisher);

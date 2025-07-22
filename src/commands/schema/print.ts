@@ -85,17 +85,19 @@ export async function previewSchema(schemaType: 'main' | 'federation' | 'all' = 
     console.log(chalk.cyan(`\n📋 Schema Preview (${schemaType}):\n`));
     
     switch (schemaType) {
-      case 'main':
+      case 'main': {
         const mainSDL = printSchema(schema);
         console.log(chalk.gray(mainSDL.slice(0, 500) + (mainSDL.length > 500 ? '...' : '')));
         console.log(chalk.blue(`\nFull schema: ${mainSDL.length} characters`));
         break;
+      }
         
-      case 'federation':
+      case 'federation': {
         const fedSDL = printSchema(federationSchema);
         console.log(chalk.gray(fedSDL.slice(0, 500) + (fedSDL.length > 500 ? '...' : '')));
         console.log(chalk.blue(`\nFull schema: ${fedSDL.length} characters`));
         break;
+      }
         
       case 'all':
         await previewSchema('main');

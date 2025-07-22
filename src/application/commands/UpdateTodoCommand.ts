@@ -1,4 +1,4 @@
-import { PriorityEnum } from '../../domain/value-objects/Priority.js';
+import type { PriorityEnum } from '../../domain/value-objects/Priority.js';
 
 export class UpdateTodoCommand {
   constructor(

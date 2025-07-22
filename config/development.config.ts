@@ -1,6 +1,4 @@
 export default {
-  extends: ['./base.config.ts'],
-  
   // Development Server Configuration
   server: {
     port: parseInt(process.env.PORT || '4000'),

@@ -1,17 +1,10 @@
-import { inspect } from 'node:util'
 import { join } from 'node:path'
 import { existsSync, mkdirSync } from 'node:fs'
-
-import {
-  type LoggerOptions,
-  createLogger as createWinstonLogger,
-  format as f,
-  transports as t,
-} from 'winston'
-
+import pino, { type LoggerOptions as PinoOptions, type TransportTargetOptions as PinoTransportOptions } from 'pino'
+import pretty from 'pino-pretty'
 import { getCurrentConfig } from './config/index.js'
 
-export function createLogger(options?: LoggerOptions) {
+export function createLogger(options?: Partial<PinoOptions>) {
   // Get logger configuration (with fallback values)
   const config = getCurrentConfig()
   const loggerConfig = config?.logger || {
@@ -25,12 +18,6 @@ export function createLogger(options?: LoggerOptions) {
     },
     console: {
       enabled: true,
-      colors: {
-        error: 'red',
-        warn: 'yellow',
-        info: 'blue',
-        debug: 'gray',
-      },
     },
   }
 
@@ -39,109 +26,82 @@ export function createLogger(options?: LoggerOptions) {
     mkdirSync(loggerConfig.dir, { recursive: true })
   }
 
-  // Build transports array
-  const transports: any[] = []
+  // Determine if we need pretty printing (development)
+  const isDevelopment = process.env.NODE_ENV !== 'production'
+  const shouldPrettyPrint = isDevelopment && loggerConfig.console?.enabled
 
-  // Console transport (conditional)
-  if (loggerConfig.console?.enabled) {
-    transports.push(
-      new t.Console({
-        level: loggerConfig.level,
-        format: f.combine(
-          f.colorize({
-            level: true,
-            message: false,
-            colors: loggerConfig.console?.colors || {
-              error: 'red',
-              warn: 'yellow',
-              info: 'blue',
-              debug: 'gray',
-            },
-          }),
-          f.printf((log: any) => {
-            const bagde = `. ${log.level}${log.label && `:${log.label}`}`
-            const name =
-              log.service && log.version && `\\ ${log.service}@${log.version}`
-            const time = log.timestamp && `> ${log.timestamp.split('T')[1]}`
-            const message =
-              typeof log.message === 'string' &&
-              log.message.length > 0 &&
-              `\\ ${log.message}`
-            const stack =
-              log.stack &&
-              typeof log.message === 'string' &&
-              log.message.length > 0 &&
-              log.stack.slice(log.stack.indexOf('\n') + 1)
-            const data =
-              log.data &&
-              typeof log.data === 'object' &&
-              Object.keys(log.data).length > 0 &&
-              inspect(log.data, {
-                breakLength: 80,
-                compact: true,
-                colors: true,
-                showHidden: true,
-                sorted: true,
-              })
-
-            return [bagde, name, time, message, stack, data].reduce(
-              (acc, line) => (line ? `${acc}\n${line}` : acc),
-              '',
-            )
-          }),
-        ),
-      })
-    )
-  }
-
-  // File transports
-  if (loggerConfig.dir && loggerConfig.files) {
-    transports.push(
-      new t.File({
-        level: loggerConfig.level,
-        filename: join(loggerConfig.dir, loggerConfig.files.debug),
-        format: f.json(),
-      }),
-      new t.File({
-        level: 'error',
-        filename: join(loggerConfig.dir, loggerConfig.files.error),
-        format: f.json(),
-      })
-    )
-  }
-
-  return createWinstonLogger({
-    defaultMeta: {
+  // Base logger options
+  const baseOptions: PinoOptions = {
+    level: loggerConfig.level,
+    base: {
       service: loggerConfig.service,
       version: loggerConfig.version,
+      pid: process.pid,
+      hostname: undefined, // Remove hostname for privacy
     },
-
-    exitOnError: false,
-    handleRejections: true,
-
-    format: f.combine(
-      f.timestamp(),
-      f.errors({
-        stack: true,
-        inspect: false,
-      }),
-      f.metadata({
-        key: 'data',
-        fillExcept: [
-          'stack',
-          'version',
-          'message',
-          'label',
-          'level',
-          'timestamp',
-        ],
-      }),
-    ),
-
-    transports,
-
+    timestamp: pino.stdTimeFunctions.isoTime,
+    formatters: {
+      level: (label) => ({ level: label }),
+    },
+    serializers: {
+      req: pino.stdSerializers.req,
+      res: pino.stdSerializers.res,
+      error: pino.stdSerializers.err,
+    },
     ...options,
-  })
+  }
+
+  // Create transport for file logging or pretty printing
+  let transport
+  if (shouldPrettyPrint) {
+    transport = pretty({
+      colorize: true,
+      translateTime: 'HH:MM:ss.l',
+      ignore: 'pid,hostname',
+      singleLine: false,
+      hideObject: false,
+      customPrettifiers: {
+        time: (timestamp: string | object) => `🕐 ${timestamp as string}`,
+        level: (logLevel: string | object) => {
+          const levelEmojis: Record<string, string> = {
+            trace: '🔍',
+            debug: '🐛',
+            info: 'ℹ️',
+            warn: '⚠️',
+            error: '❌',
+            fatal: '💀',
+          }
+          return `${levelEmojis[logLevel as string] || '📝'} ${(logLevel as string).toUpperCase()}`
+        },
+      },
+    })
+  } else if (loggerConfig.dir && loggerConfig.files) {
+    // File transport for production
+    const targets: PinoTransportOptions[] = [
+      {
+        target: 'pino/file',
+        level: loggerConfig.level,
+        options: {
+          destination: join(loggerConfig.dir, loggerConfig.files.debug),
+          mkdir: true,
+        },
+      },
+      {
+        target: 'pino/file',
+        level: 'error',
+        options: {
+          destination: join(loggerConfig.dir, loggerConfig.files.error),
+          mkdir: true,
+        },
+      },
+    ]
+
+    transport = pino.transport({
+      targets,
+    })
+  }
+
+  return pino(baseOptions, transport)
 }
 
 export const logger = createLogger();

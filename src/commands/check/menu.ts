@@ -1,7 +1,8 @@
 import { Command } from '@oclif/core';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { executeCommand, checkTypeScript } from '../../lib/utils.js';
+import { executeCommand } from '../../lib/utils.js';
+// checkTypeScript imported but not used in this file
 import { Listr } from 'listr2';
 
 export default class CheckMenu extends Command {

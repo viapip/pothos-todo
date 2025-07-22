@@ -58,8 +58,8 @@ export async function executeCommand(
     
     return {
       success: true,
-      stdout: result.stdout,
-      stderr: result.stderr,
+      stdout: result.stdout || '',
+      stderr: result.stderr || '',
     };
   } catch (error) {
     if (spinner) {

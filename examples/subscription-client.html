@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GraphQL Subscription Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .subscription-box { border: 1px solid #ccc; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .logs { background: #f5f5f5; padding: 10px; height: 300px; overflow-y: scroll; border: 1px solid #ddd; }
+        .event { margin: 5px 0; padding: 5px; background: #e8f4f8; border-radius: 3px; }
+        .error { background: #ffe6e6; color: #cc0000; }
+        .connected { color: #006600; }
+        .disconnected { color: #cc0000; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 GraphQL Subscription Test Client</h1>
+        <p>Real-time subscriptions for Pothos Todo App</p>
+        
+        <div class="subscription-box">
+            <h3>📡 Connection Status: <span id="status" class="disconnected">Disconnected</span></h3>
+            
+            <div>
+                <label>GraphQL Endpoint:</label>
+                <input type="text" id="endpoint" value="http://localhost:4000/graphql" />
+            </div>
+            
+            <div>
+                <label>Todo List ID:</label>
+                <input type="text" id="todoListId" value="test-list-1" placeholder="Enter a todo list ID" />
+            </div>
+            
+            <div>
+                <button onclick="connectSubscription()">🔌 Connect to Todo Updates</button>
+                <button onclick="disconnectSubscription()">🔌 Disconnect</button>
+                <button onclick="clearLogs()">🗑️ Clear Logs</button>
+            </div>
+        </div>
+
+        <div class="subscription-box">
+            <h3>📝 Test Mutation</h3>
+            <p>Use this to trigger subscription events:</p>
+            <div>
+                <input type="text" id="todoTitle" placeholder="New todo title" value="Test Todo" />
+                <button onclick="createTodo()">➕ Create Todo</button>
+            </div>
+        </div>
+
+        <div class="subscription-box">
+            <h3>📊 Real-time Events</h3>
+            <div id="logs" class="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        const logs = document.getElementById('logs');
+        const status = document.getElementById('status');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = `event ${type}`;
+            div.innerHTML = `<strong>${timestamp}</strong> - ${message}`;
+            logs.appendChild(div);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function updateStatus(connected) {
+            if (connected) {
+                status.textContent = 'Connected';
+                status.className = 'connected';
+            } else {
+                status.textContent = 'Disconnected';
+                status.className = 'disconnected';
+            }
+        }
+
+        function connectSubscription() {
+            const endpoint = document.getElementById('endpoint').value;
+            const todoListId = document.getElementById('todoListId').value;
+
+            if (!todoListId.trim()) {
+                log('Please enter a Todo List ID', 'error');
+                return;
+            }
+
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            // GraphQL subscription query
+            const subscription = `
+                subscription TodoUpdates($todoListId: String!) {
+                    todoUpdates(todoListId: $todoListId) {
+                        todo {
+                            id
+                            title
+                            status
+                        }
+                        action
+                        userId
+                        timestamp
+                    }
+                }
+            `;
+
+            const variables = { todoListId };
+
+            // Create SSE connection for GraphQL subscription
+            const query = encodeURIComponent(subscription);
+            const vars = encodeURIComponent(JSON.stringify(variables));
+            const url = `${endpoint}/stream?query=${query}&variables=${vars}`;
+
+            log(`🔌 Connecting to: ${endpoint}`, 'info');
+            log(`📡 Subscribing to todo list: ${todoListId}`, 'info');
+
+            eventSource = new EventSource(url);
+
+            eventSource.onopen = () => {
+                updateStatus(true);
+                log('✅ Connected to subscription stream', 'connected');
+            };
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.data && data.data.todoUpdates) {
+                        const update = data.data.todoUpdates;
+                        log(`🔔 ${update.action}: ${update.todo.title} (ID: ${update.todo.id})`, 'info');
+                        log(`   └─ Status: ${update.todo.status}, User: ${update.userId || 'unknown'}`, 'info');
+                    } else {
+                        log(`📦 Received: ${JSON.stringify(data)}`, 'info');
+                    }
+                } catch (e) {
+                    log(`📦 Raw event: ${event.data}`, 'info');
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                updateStatus(false);
+                log(`❌ Connection error: ${error.type || 'Unknown error'}`, 'error');
+                log('🔄 Will attempt to reconnect automatically...', 'info');
+            };
+
+            eventSource.onclose = () => {
+                updateStatus(false);
+                log('🔌 Connection closed', 'info');
+            };
+        }
+
+        function disconnectSubscription() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                updateStatus(false);
+                log('🔌 Manually disconnected', 'info');
+            }
+        }
+
+        function clearLogs() {
+            logs.innerHTML = '';
+        }
+
+        async function createTodo() {
+            const endpoint = document.getElementById('endpoint').value;
+            const todoListId = document.getElementById('todoListId').value;
+            const title = document.getElementById('todoTitle').value;
+
+            if (!title.trim()) {
+                log('Please enter a todo title', 'error');
+                return;
+            }
+
+            const mutation = `
+                mutation CreateTodo($input: CreateTodoInput!) {
+                    createTodo(input: $input) {
+                        id
+                        title
+                        status
+                    }
+                }
+            `;
+
+            const variables = {
+                input: {
+                    title: title,
+                    todoListId: todoListId || null
+                }
+            };
+
+            try {
+                log(`🚀 Creating todo: "${title}"`, 'info');
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: mutation,
+                        variables: variables
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.errors) {
+                    log(`❌ Mutation error: ${result.errors[0].message}`, 'error');
+                } else if (result.data?.createTodo) {
+                    log(`✅ Todo created: ${result.data.createTodo.title} (ID: ${result.data.createTodo.id})`, 'connected');
+                    // Clear the input
+                    document.getElementById('todoTitle').value = '';
+                } else {
+                    log(`⚠️ Unexpected response: ${JSON.stringify(result)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Request failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-connect on page load for demo
+        window.onload = () => {
+            log('🌟 GraphQL Subscription Test Client loaded', 'info');
+            log('📋 Instructions:', 'info');
+            log('  1. Enter a Todo List ID', 'info');
+            log('  2. Click "Connect to Todo Updates"', 'info');
+            log('  3. Create todos to see real-time updates!', 'info');
+        };
+    </script>
+</body>
+</html>

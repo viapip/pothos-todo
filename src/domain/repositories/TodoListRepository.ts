@@ -1,4 +1,4 @@
-import { TodoList } from '../aggregates/TodoList.js';
+import type { TodoList } from '../aggregates/TodoList.js';
 
 export interface TodoListRepository {
   findById(id: string): Promise<TodoList | null>;

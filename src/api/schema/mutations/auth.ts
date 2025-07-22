@@ -20,7 +20,7 @@ builder.mutationFields((t) => ({
 			password: t.arg.string({ required: true }),
 			name: t.arg.string({ required: false }),
 		},
-		resolve: async (parent, args, context) => {
+		resolve: async (_parent, args, context) => {
 			try {
 				const { user } = await UserService.registerUser(
 					args.email,
@@ -48,7 +48,7 @@ builder.mutationFields((t) => ({
 			email: t.arg.string({ required: true }),
 			password: t.arg.string({ required: true }),
 		},
-		resolve: async (parent, args, context) => {
+		resolve: async (_parent, args, context) => {
 			try {
 				const { user } = await UserService.loginUser(
 					args.email,
@@ -74,7 +74,7 @@ builder.mutationFields((t) => ({
 		authScopes: {
 			authenticated: true,
 		},
-		resolve: async (parent, args, context) => {
+		resolve: async (_parent, _args, context) => {
 			try {
 				// Clear H3 session
 				const event = getH3EventFromContext(context);
@@ -99,16 +99,17 @@ builder.mutationFields((t) => ({
 		authScopes: {
 			authenticated: true,
 		},
-		resolve: async (parent, args, context) => {
+		resolve: async (_parent, args, context) => {
 			if (!context.session?.user) {
 				throw new Error('Not authenticated');
 			}
 
 			try {
-				await UserService.updateProfile(context.session.user.id, {
-					name: args.name || undefined,
-					email: args.email || undefined,
-				});
+				const updateData: { name?: string; email?: string } = {};
+				if (args.name) updateData.name = args.name;
+				if (args.email) updateData.email = args.email;
+				
+				await UserService.updateProfile(context.session.user.id, updateData);
 
 				return true;
 			} catch (error) {
@@ -127,7 +128,7 @@ builder.mutationFields((t) => ({
 		authScopes: {
 			authenticated: true,
 		},
-		resolve: async (parent, args, context) => {
+		resolve: async (_parent, args, context) => {
 			if (!context.session?.user) {
 				throw new Error('Not authenticated');
 			}
@@ -152,7 +153,7 @@ builder.mutationFields((t) => ({
 		authScopes: {
 			authenticated: true,
 		},
-		resolve: async (parent, args, context) => {
+		resolve: async (_parent, _args, context) => {
 			if (!context.session?.user) {
 				throw new Error('Not authenticated');
 			}

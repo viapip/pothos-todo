@@ -28,7 +28,7 @@ export const TodoListMutations = builder.mutationFields((t) => {
     args: {
       input: t.arg({ type: CreateTodoListInput, required: true }),
     },
-    resolve: async (query, root, args, context) => {
+    resolve: async (query, _root, args, context) => {
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
@@ -39,7 +39,7 @@ export const TodoListMutations = builder.mutationFields((t) => {
         data: {
           id: todoListId,
           title: args.input.title,
-          description: args.input.description,
+          description: args.input.description ?? null,
           userId,
         },
       });
@@ -55,7 +55,7 @@ export const TodoListMutations = builder.mutationFields((t) => {
       id: t.arg.id({ required: true }),
       input: t.arg({ type: UpdateTodoListInput, required: true }),
     },
-    resolve: async (query, root, args, context) => {
+    resolve: async (query, _root, args, context) => {
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
@@ -84,7 +84,7 @@ export const TodoListMutations = builder.mutationFields((t) => {
     args: {
       id: t.arg.id({ required: true }),
     },
-    resolve: async (root, args, context) => {
+    resolve: async (_root, args, context) => {
       const userId = context.user?.id;
       if (!userId) throw new Error('Not authenticated');
 

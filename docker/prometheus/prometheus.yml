@@ -1,0 +1,89 @@
+# Prometheus configuration for Pothos GraphQL API monitoring
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+# Alertmanager configuration (if needed)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# Rule files
+rule_files:
+  - "rules/*.yml"
+
+# Scrape configuration
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+
+  # Pothos GraphQL API
+  - job_name: 'pothos-api'
+    static_configs:
+      - targets: ['api:4000']
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+    scrape_timeout: 10s
+    honor_labels: false
+    honor_timestamps: true
+    params:
+      format: ['prometheus']
+
+  # PostgreSQL (using postgres_exporter if available)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    params:
+      collect[]: 
+        - 'pg_stat_database'
+        - 'pg_stat_user_tables'
+        - 'pg_stat_bgwriter'
+
+  # Redis (using redis_exporter if available)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+
+  # Nginx (using nginx-prometheus-exporter if available)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    scrape_interval: 30s
+    metrics_path: '/stub_status'
+
+  # Docker container metrics (cAdvisor if available)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus
+    retention.time: 15d
+    retention.size: 1GB
+    wal-compression: true
+
+# Remote write configuration (for external systems)
+# remote_write:
+#   - url: 'https://your-remote-prometheus-endpoint/api/v1/write'
+#     headers:
+#       Authorization: 'Bearer your-token'
+
+# Remote read configuration (for external systems)  
+# remote_read:
+#   - url: 'https://your-remote-prometheus-endpoint/api/v1/read'
+#     headers:
+#       Authorization: 'Bearer your-token'

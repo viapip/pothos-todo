@@ -1,6 +1,7 @@
-import { CreateTodoCommand } from '../commands/CreateTodoCommand.js';
+import type { CreateTodoCommand } from '../commands/CreateTodoCommand.js';
 import { Todo } from '../../domain/aggregates/Todo.js';
-import { Priority, PriorityEnum } from '../../domain/value-objects/Priority.js';
+import { Priority } from '../../domain/value-objects/Priority.js';
+// PriorityEnum not used directly in handler
 import { DueDate } from '../../domain/value-objects/DueDate.js';
 import type { TodoRepository } from '../../domain/repositories/TodoRepository.js';
 import type { EventPublisher } from '../../infrastructure/events/EventPublisher.js';

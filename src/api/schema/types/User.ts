@@ -12,8 +12,8 @@ export const UserType = builder.prismaNode('User', {
     // ...UserCrud.UserObject.fields(t),
     // Instead, manually spread all fields except 'id' from UserCrud.UserObject.fields(t)
     ...(() => {
-      const { id, ...rest } = UserCrud.UserObject.fields(t);
-      return rest;
+      const { id: _, ...rest } = UserCrud.UserObject.fields?.(t) || {}; // eslint-disable-line @typescript-eslint/no-unused-vars 
+      return rest || {};
     })(),
     todos: t.relation('todos', {
       args: {
@@ -47,13 +47,15 @@ export const UserQueries = builder.queryFields((t) => {
   const findFirst = UserCrud.findFirstUserQueryObject(t);
   const findMany = UserCrud.findManyUserQueryObject(t);
   const findUnique = UserCrud.findUniqueUserQueryObject(t);
-  const count = UserCrud.countUserQueryObject(t);
+  const _ = UserCrud.countUserQueryObject(t);
+  // count result intentionally unused - available for potential future use
+  void _; // Mark as intentionally unused
   return {
     me: t.prismaField({
       type: 'User',
       nullable: true,
       authScopes: { authenticated: true },
-      resolve: (query, root, args, context) => {
+      resolve: (query, _root, _args, context) => {
         if (!context.user) return null;
         return prisma.user.findUnique({
           ...query,
@@ -98,7 +100,7 @@ export const UserQueries = builder.queryFields((t) => {
     users: t.prismaField({
       ...findMany,
       authScopes: { admin: true },
-      resolve: (query, root, args, context) => {
+      resolve: (query, _root, _args, _context) => {
         return prisma.user.findMany({
           ...query,
           orderBy: { createdAt: 'desc' },

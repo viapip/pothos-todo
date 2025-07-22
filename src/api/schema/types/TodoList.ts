@@ -2,15 +2,16 @@ import { builder } from '../builder.js';
 import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';
 import prisma from '@/lib/prisma';
 import * as TodoListCrud from '@/graphql/__generated__/TodoList';
-
+import type { Prisma } from '@prisma/client';
+// import { TodoListWhereInput } from '@/graphql/__generated__/inputs';
 
 export const TodoListType = builder.prismaNode('TodoList', {
   id: { field: 'id' },
   findUnique: (id) => ({ id }),
   fields: (t) => ({
     ...(() => {
-      const { id, ...rest } = TodoListCrud.TodoListObject.fields(t);
-      return rest;
+      const { id: _id, ...rest } = TodoListCrud.TodoListObject.fields?.(t) || {}; // eslint-disable-line @typescript-eslint/no-unused-vars 
+      return rest || {};
     })(),
     todos: t.relation('todos', {
       args: {
@@ -30,14 +31,14 @@ export const TodoListType = builder.prismaNode('TodoList', {
       }),
     }),
     todosCount: t.int({
-      resolve: (todoList, args, context) => {
+      resolve: (todoList, _args, _context) => {
         return prisma.todo.count({
           where: { todoListId: todoList.id },
         });
       },
     }),
     completedTodosCount: t.int({
-      resolve: (todoList, args, context) => {
+      resolve: (todoList, _args, _context) => {
         return prisma.todo.count({
           where: {
             todoListId: todoList.id,
@@ -47,7 +48,7 @@ export const TodoListType = builder.prismaNode('TodoList', {
       },
     }),
     pendingTodosCount: t.int({
-      resolve: (todoList, args, context) => {
+      resolve: (todoList, _args, _context) => {
         return prisma.todo.count({
           where: {
             todoListId: todoList.id,
@@ -57,7 +58,7 @@ export const TodoListType = builder.prismaNode('TodoList', {
       },
     }),
     completionPercentage: t.float({
-      resolve: async (todoList, args, context) => {
+      resolve: async (todoList, _args, _context) => {
         const total = await prisma.todo.count({
           where: { todoListId: todoList.id },
         });
@@ -80,7 +81,9 @@ export const TodoListQueries = builder.queryFields((t) => {
   const findFirst = TodoListCrud.findFirstTodoListQueryObject(t);
   const findMany = TodoListCrud.findManyTodoListQueryObject(t);
   const findUnique = TodoListCrud.findUniqueTodoListQueryObject(t);
-  const count = TodoListCrud.countTodoListQueryObject(t);
+  const _ = TodoListCrud.countTodoListQueryObject(t);
+  // count result intentionally unused - available for potential future use
+  void _; // Mark as intentionally unused
   return {
     todoList: t.prismaField({
       type: 'TodoList',
@@ -89,12 +92,12 @@ export const TodoListQueries = builder.queryFields((t) => {
       args: {
         id: t.arg.id({ required: true }),
       },
-      resolve: (query, root, args, context) => {
+      resolve: (query, _root, args, context) => {
         return prisma.todoList.findFirst({
           ...query,
           where: {
             id: args.id,
-            userId: context.user?.id,
+            ...(context.user?.id ? { userId: context.user.id } : {}),
           },
         });
       },
@@ -141,8 +144,8 @@ export const TodoListQueries = builder.queryFields((t) => {
         limit: t.arg.int({ required: false, defaultValue: 20 }),
         offset: t.arg.int({ required: false, defaultValue: 0 }),
       },
-      resolve: (query, root, args, context) => {
-        const where: any = {
+      resolve: (query, _root, args, context) => {
+        const where: Prisma.TodoListWhereInput = {
           userId: context.user?.id,
         };
 
@@ -157,8 +160,8 @@ export const TodoListQueries = builder.queryFields((t) => {
           ...query,
           where,
           orderBy: { createdAt: 'desc' },
-          take: args.limit || undefined,
-          skip: args.offset || undefined,
+          ...(args.limit ? { take: args.limit } : {}),
+          ...(args.offset ? { skip: args.offset } : {}),
         });
       },
     }),

@@ -5,7 +5,7 @@ builder.queryFields((t) => ({
 	currentUser: t.prismaField({
 		type: 'User',
 		nullable: true,
-		resolve: async (query, parent, args, context) => {
+		resolve: async (query, _parent, _args, context) => {
 			// Return the current authenticated user
 			if (!context.session?.user) {
 				return null;

@@ -1,4 +1,4 @@
-import { PrismaClient, type User as PrismaUser } from '@prisma/client';
+import type { PrismaClient, User as PrismaUser } from '@prisma/client';
 import type { UserRepository } from '../../domain/repositories/UserRepository.js';
 import { User } from '../../domain/aggregates/User.js';
 

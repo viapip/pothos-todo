@@ -1,5 +1,5 @@
-import { UpdateTodoCommand } from '../commands/UpdateTodoCommand.js';
-import { Todo } from '../../domain/aggregates/Todo.js';
+import type { UpdateTodoCommand } from '../commands/UpdateTodoCommand.js';
+import type { Todo } from '../../domain/aggregates/Todo.js';
 import { Priority } from '../../domain/value-objects/Priority.js';
 import { DueDate } from '../../domain/value-objects/DueDate.js';
 import type { TodoRepository } from '../../domain/repositories/TodoRepository.js';

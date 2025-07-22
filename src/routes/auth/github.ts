@@ -1,5 +1,5 @@
 import { github, generateState, setOAuthStateCookie } from '@/lib/auth';
-import { type H3Event } from 'h3';
+import type { H3Event } from 'h3';
 
 /**
  * Initiate GitHub OAuth flow using H3

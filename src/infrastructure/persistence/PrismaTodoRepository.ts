@@ -1,8 +1,8 @@
-import { PrismaClient, type Todo as PrismaTodo } from '@prisma/client';
+import type { PrismaClient, Todo as PrismaTodo } from '@prisma/client';
 import type { TodoRepository } from '../../domain/repositories/TodoRepository.js';
 import { Todo } from '../../domain/aggregates/Todo.js';
-import { TodoStatus, TodoStatusEnum } from '../../domain/value-objects/TodoStatus.js';
-import { Priority, PriorityEnum } from '../../domain/value-objects/Priority.js';
+import { TodoStatus, type TodoStatusEnum } from '../../domain/value-objects/TodoStatus.js';
+import { Priority, type PriorityEnum } from '../../domain/value-objects/Priority.js';
 import { DueDate } from '../../domain/value-objects/DueDate.js';
 
 export class PrismaTodoRepository implements TodoRepository {

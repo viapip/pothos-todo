@@ -1,53 +1,58 @@
-import { Command, Flags } from '@oclif/core';
-import chalk from 'chalk';
-import { printMainSchema, printFederationSchema, printAllSchemas, previewSchema } from './print.js';
+import { Command, Flags } from "@oclif/core";
+import chalk from "chalk";
+import {
+  printMainSchema,
+  printFederationSchema,
+  printAllSchemas,
+  previewSchema,
+} from "./print.js";
 
 export default class Schema extends Command {
-  static override description = 'Print GraphQL schema to SDL format';
-  
+  static override description = "Print GraphQL schema to SDL format";
+
   static override examples = [
-    '<%= config.bin %> <%= command.id %>',
-    '<%= config.bin %> <%= command.id %> --main',
-    '<%= config.bin %> <%= command.id %> --federation',
-    '<%= config.bin %> <%= command.id %> --all',
-    '<%= config.bin %> <%= command.id %> --preview',
-    '<%= config.bin %> <%= command.id %> --output custom-output',
+    "<%= config.bin %> <%= command.id %>",
+    "<%= config.bin %> <%= command.id %> --main",
+    "<%= config.bin %> <%= command.id %> --federation",
+    "<%= config.bin %> <%= command.id %> --all",
+    "<%= config.bin %> <%= command.id %> --preview",
+    "<%= config.bin %> <%= command.id %> --output custom-output",
   ];
 
   static override flags = {
     main: Flags.boolean({
-      char: 'm',
-      description: 'Print main GraphQL schema only',
-      exclusive: ['federation', 'all'],
+      char: "m",
+      description: "Print main GraphQL schema only",
+      exclusive: ["federation", "all"],
     }),
     federation: Flags.boolean({
-      char: 'f',
-      description: 'Print federation GraphQL schema only',
-      exclusive: ['main', 'all'],
+      char: "f",
+      description: "Print federation GraphQL schema only",
+      exclusive: ["main", "all"],
     }),
     all: Flags.boolean({
-      char: 'a',
-      description: 'Print both main and federation schemas',
-      exclusive: ['main', 'federation'],
+      char: "a",
+      description: "Print both main and federation schemas",
+      exclusive: ["main", "federation"],
     }),
     output: Flags.string({
-      char: 'o',
-      description: 'Output directory path',
-      default: '.output',
+      char: "o",
+      description: "Output directory path",
+      default: ".output",
     }),
     preview: Flags.boolean({
-      char: 'p',
-      description: 'Preview schema without writing to file',
+      char: "p",
+      description: "Preview schema without writing to file",
     }),
     verbose: Flags.boolean({
-      char: 'v',
-      description: 'Show detailed output',
+      char: "v",
+      description: "Show detailed output",
     }),
   };
 
   async run(): Promise<void> {
     const { flags } = await this.parse(Schema);
-    
+
     if (flags.preview) {
       await this.handlePreview(flags);
       return;
@@ -65,17 +70,22 @@ export default class Schema extends Command {
     }
   }
 
-  private async handlePreview(flags: any): Promise<void> {
+  private async handlePreview(flags: {
+    all: boolean;
+    federation: boolean;
+    main: boolean;
+    verbose: boolean;
+  }): Promise<void> {
     try {
       if (flags.all) {
-        await previewSchema('all');
+        await previewSchema("all");
       } else if (flags.federation) {
-        await previewSchema('federation');
+        await previewSchema("federation");
       } else {
-        await previewSchema('main');
+        await previewSchema("main");
       }
     } catch (error) {
-      this.log(chalk.red('❌ Failed to preview schema'));
+      this.log(chalk.red("❌ Failed to preview schema"));
       if (flags.verbose) {
         this.log(chalk.red(String(error)));
       }
@@ -83,16 +93,19 @@ export default class Schema extends Command {
     }
   }
 
-  private async printMain(flags: any): Promise<void> {
-    this.log(chalk.blue('📄 Printing main GraphQL schema...'));
-    
+  private async printMain(flags: {
+    output: string;
+    verbose: boolean;
+  }): Promise<void> {
+    this.log(chalk.blue("📄 Printing main GraphQL schema..."));
+
     try {
       await printMainSchema({
         outputPath: flags.output,
         verbose: flags.verbose,
       });
     } catch (error) {
-      this.log(chalk.red('❌ Failed to print main schema'));
+      this.log(chalk.red("❌ Failed to print main schema"));
       if (flags.verbose) {
         this.log(chalk.red(String(error)));
       }
@@ -100,16 +113,19 @@ export default class Schema extends Command {
     }
   }
 
-  private async printFederation(flags: any): Promise<void> {
-    this.log(chalk.blue('🌐 Printing federation GraphQL schema...'));
-    
+  private async printFederation(flags: {
+    output: string;
+    verbose: boolean;
+  }): Promise<void> {
+    this.log(chalk.blue("🌐 Printing federation GraphQL schema..."));
+
     try {
       await printFederationSchema({
         outputPath: flags.output,
         verbose: flags.verbose,
       });
     } catch (error) {
-      this.log(chalk.red('❌ Failed to print federation schema'));
+      this.log(chalk.red("❌ Failed to print federation schema"));
       if (flags.verbose) {
         this.log(chalk.red(String(error)));
       }
@@ -117,16 +133,19 @@ export default class Schema extends Command {
     }
   }
 
-  private async printAll(flags: any): Promise<void> {
-    this.log(chalk.magenta('📦 Printing all GraphQL schemas...'));
-    
+  private async printAll(flags: {
+    output: string;
+    verbose: boolean;
+  }): Promise<void> {
+    this.log(chalk.magenta("📦 Printing all GraphQL schemas..."));
+
     try {
       await printAllSchemas({
         outputPath: flags.output,
         verbose: flags.verbose,
       });
     } catch (error) {
-      this.log(chalk.red('❌ Failed to print schemas'));
+      this.log(chalk.red("❌ Failed to print schemas"));
       if (flags.verbose) {
         this.log(chalk.red(String(error)));
       }

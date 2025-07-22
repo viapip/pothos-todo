@@ -1,5 +1,5 @@
 import { loadConfig, watchConfig } from 'c12';
-import type { AppConfig, ConfigResult, ConfigWatchOptions } from '../../config/types.js';
+import type { AppConfig, ConfigWatchOptions } from '../../config/types.js';
 
 // Configuration loader instance
 let configInstance: AppConfig | null = null;
@@ -19,9 +19,11 @@ export async function loadAppConfig(reload = false): Promise<AppConfig> {
     const result = await loadConfig<AppConfig>({
       name: 'config',
       cwd: process.cwd(),
-      configFile: 'config.ts',
+      configFile: 'config',
+      rcFile: false,
+      globalRc: false,
       dotenv: true,
-      packageJson: true,
+      packageJson: false,
       envName: process.env.NODE_ENV || 'development',
       defaults: {
         server: {
@@ -78,9 +80,11 @@ export async function watchAppConfig(options: ConfigWatchOptions = {}) {
     configWatcher = watchConfig<AppConfig>({
       name: 'config',
       cwd: process.cwd(),
-      configFile: 'config.ts',
+      configFile: 'config',
+      rcFile: false,
+      globalRc: false,
       dotenv: true,
-      packageJson: true,
+      packageJson: false,
       envName: process.env.NODE_ENV || 'development',
       debounce: options.debounce || 100,
       onWatch: (event) => {
@@ -209,7 +213,6 @@ export function getConfigValueSafe<T>(keyPath: string, defaultValue: T): T {
   try {
     return getConfigValue(keyPath, defaultValue);
   } catch (error) {
-    console.warn(`Configuration value not found for key: ${keyPath}, using default`);
     return defaultValue;
   }
 }
@@ -276,6 +279,23 @@ export function getDatabaseConfig() {
 }
 
 /**
+ * Get Redis configuration
+ */
+export function getRedisConfig() {
+  return getConfigValueSafe('redis', {
+    url: 'redis://localhost:6379',
+    host: 'localhost',
+    port: 6379,
+    password: 'redispassword',
+    maxRetriesPerRequest: 3,
+    db: 0,
+    keyPrefix: 'pothos-todo:',
+    connectTimeout: 10000,
+    lazyConnect: true,
+  });
+}
+
+/**
  * Get logger configuration
  */
 export function getLoggerConfig() {
@@ -311,6 +331,28 @@ export function getDockerConfig() {
  */
 export function getGraphQLConfig() {
   return getConfigValue('graphql');
+}
+
+/**
+ * Get security configuration
+ */
+export function getSecurityConfig() {
+  return getConfigValueSafe('security', {
+    rateLimit: {
+      windowMs: 15 * 60 * 1000,
+      max: 100,
+      message: 'Too many requests from this IP, please try again later.',
+    },
+    cors: {
+      origin: 'http://localhost:3000',
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    },
+    headers: {
+      hsts: false,
+      contentSecurityPolicy: false,
+    },
+  });
 }
 
 /**

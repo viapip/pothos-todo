@@ -1,5 +1,5 @@
 import { getCurrentSessionFromEvent, invalidateSession, deleteSessionTokenCookie } from '@/lib/auth';
-import { type H3Event } from 'h3';
+import type { H3Event } from 'h3';
 
 /**
  * Handle user logout using H3

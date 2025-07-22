@@ -1,4 +1,4 @@
-import { User } from '../aggregates/User.js';
+import type { User } from '../aggregates/User.js';
 
 export interface UserRepository {
   findById(id: string): Promise<User | null>;

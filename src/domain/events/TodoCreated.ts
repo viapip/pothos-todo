@@ -1,6 +1,6 @@
 import { DomainEvent } from './DomainEvent.js';
-import { TodoStatus } from '../value-objects/TodoStatus.js';
-import { Priority } from '../value-objects/Priority.js';
+import type { TodoStatus } from '../value-objects/TodoStatus.js';
+import type { Priority } from '../value-objects/Priority.js';
 
 export class TodoCreated extends DomainEvent {
   constructor(

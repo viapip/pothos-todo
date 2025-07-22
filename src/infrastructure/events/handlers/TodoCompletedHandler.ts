@@ -1,4 +1,4 @@
-import { TodoCompleted } from '../../../domain/events/TodoCompleted.js';
+import type { TodoCompleted } from '../../../domain/events/TodoCompleted.js';
 
 export class TodoCompletedHandler {
   constructor() {}

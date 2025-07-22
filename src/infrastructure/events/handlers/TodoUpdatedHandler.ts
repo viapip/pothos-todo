@@ -1,4 +1,4 @@
-import { TodoUpdated } from '../../../domain/events/TodoUpdated.js';
+import type { TodoUpdated } from '../../../domain/events/TodoUpdated.js';
 
 export class TodoUpdatedHandler {
   constructor() {}

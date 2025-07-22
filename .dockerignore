@@ -1,0 +1,89 @@
+# Docker ignore file for production builds
+
+# Development files
+*.md
+README.md
+docs/
+examples/
+tests/
+coverage/
+.nyc_output/
+
+# Environment and config
+.env
+.env.*
+!.env.example
+
+# Development dependencies
+node_modules/
+.pnpm-store/
+bun.lockb
+package-lock.json
+yarn.lock
+
+# Build artifacts
+dist/
+.out/
+build/
+tmp/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Source maps
+*.map
+
+# Development Docker files
+docker-compose.yml
+docker-compose.*.yml
+docker/dev/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Miscellaneous
+.git/
+.gitignore
+.gitattributes
+.prettierrc
+.eslintrc*
+.biome.json
+tsconfig.json
+vitest.config.ts
+.husky/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

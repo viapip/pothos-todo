@@ -1,7 +1,6 @@
 import { builder } from './builder.js';
 
-// Import authentication types first
-import './types/auth.js';
+// Authentication types removed - using H3 sessions now
 
 // Import root types
 import './queries/index.js';
@@ -12,8 +11,12 @@ import './types/User.js';
 import './types/Todo.js';
 import './types/TodoList.js';
 import './types/Session.js';
+import './types/Subscription.js';
+import './types/VersionedTodo.js';
 import './mutations/TodoMutations.js';
 import './mutations/TodoListMutations.js';
+import './queries/VersionedQueries.js';
+import './mutations/VersionedMutations.js';
 
 export const schema = builder.toSchema();
 

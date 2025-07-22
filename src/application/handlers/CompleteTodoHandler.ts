@@ -1,5 +1,5 @@
-import { CompleteTodoCommand } from '../commands/CompleteTodoCommand.js';
-import { Todo } from '../../domain/aggregates/Todo.js';
+import type { CompleteTodoCommand } from '../commands/CompleteTodoCommand.js';
+import type { Todo } from '../../domain/aggregates/Todo.js';
 import type { TodoRepository } from '../../domain/repositories/TodoRepository.js';
 import type { EventPublisher } from '../../infrastructure/events/EventPublisher.js';
 

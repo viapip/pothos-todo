@@ -1,6 +1,6 @@
 import { github, getOAuthState, validateOAuthState, handleGitHubOAuth, generateSessionToken, createSession, setSessionTokenCookie, type GitHubUserInfo } from '@/lib/auth';
 import type { OAuth2Tokens } from 'arctic';
-import { type H3Event } from 'h3';
+import type { H3Event } from 'h3';
 
 /**
  * Handle GitHub OAuth callback using H3

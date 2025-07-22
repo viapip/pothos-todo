@@ -1,7 +1,7 @@
 import { AggregateRoot } from './base/AggregateRoot.js';
 import { TodoStatus } from '../value-objects/TodoStatus.js';
 import { Priority } from '../value-objects/Priority.js';
-import { DueDate } from '../value-objects/DueDate.js';
+import type { DueDate } from '../value-objects/DueDate.js';
 import { TodoCreated } from '../events/TodoCreated.js';
 import { TodoCompleted } from '../events/TodoCompleted.js';
 import { TodoDeleted } from '../events/TodoDeleted.js';

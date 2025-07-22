@@ -157,7 +157,7 @@ export default class Check extends Command {
     try {
       await tasks.run();
       this.log(chalk.green('\n✅ All validation checks passed!'));
-    } catch (error) {
+    } catch (_error) {
       this.log(chalk.red('\n❌ Some validation checks failed'));
       this.log(chalk.gray('Check the output above for details'));
       process.exit(1);

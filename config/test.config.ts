@@ -1,6 +1,4 @@
 export default {
-  extends: ['./base.config.ts'],
-  
   // Test Server Configuration
   server: {
     port: 0, // Use random available port for testing

@@ -1,4 +1,4 @@
-import { builder } from './builder.js';
+// import { builder } from './builder.js';
 import { printSubgraphSchema } from '@apollo/subgraph';
 import { schema } from './schema.js';
 

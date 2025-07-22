@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     // Environment setup & latest features
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "target": "ESNext",
     "module": "Preserve",
     "moduleDetection": "force",
@@ -10,22 +10,63 @@
     // Bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "noEmit": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
 
-    // Best practices
+    // Best practices & strict checks
     "strict": true,
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
+    // "exactOptionalPropertyTypes": true, // Temporarily disabled for generated code compatibility
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    // "noUnusedLocals": true, // Temporarily disabled for generated code
+    // "noUnusedParameters": true, // Temporarily disabled for generated code
+    "useDefineForClassFields": true,
 
-    // Some stricter flags (disabled by default)
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    // Additional strictness (can be enabled selectively)
     "noPropertyAccessFromIndexSignature": false,
+
+    // Type checking improvements
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    
+    // Path mapping
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"], 
-    }
-  }
+      "@/*": ["./src/*"],
+      "~/*": ["./*"]
+    },
+
+    // JSX (if needed in future)
+    "jsx": "preserve",
+    "jsxImportSource": "react",
+
+    // Emit settings
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": false,
+    "importHelpers": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.json"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "src/graphql/__generated__/**/*"
+  ]
 }

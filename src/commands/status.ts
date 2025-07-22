@@ -1,6 +1,7 @@
 import { Command, Flags } from '@oclif/core';
 import chalk from 'chalk';
-import { executeCommand, isDockerRunning, getBuildStatus, checkTypeScript, fileExists } from '../lib/utils.js';
+import { executeCommand, isDockerRunning, getBuildStatus, fileExists } from '../lib/utils.js';
+// checkTypeScript imported but not used in this file
 import boxen from 'boxen';
 import { join } from 'path';
 

@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../events/DomainEvent.js';
+import type { DomainEvent } from '../../events/DomainEvent.js';
 
 export abstract class Entity<T = string> {
   protected _id: T;

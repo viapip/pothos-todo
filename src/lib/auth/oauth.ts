@@ -1,9 +1,8 @@
 import { Google, GitHub } from 'arctic';
 import { setCookie, getCookie, type H3Event } from 'h3';
-import { getServerConfig, getOAuthConfig, isProduction } from '@/config/index.js';
+import { getOAuthConfig, isProduction } from '@/config/index.js';
 
 // Get configuration values using the centralized config system
-const serverConfig = getServerConfig();
 const oauthConfig = getOAuthConfig();
 
 // OAuth configuration from centralized config
