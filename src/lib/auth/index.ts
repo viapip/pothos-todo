@@ -26,6 +26,17 @@ export {
 	validateOAuthState,
 } from './oauth';
 
+// Password management
+export {
+	hashPassword,
+	verifyPassword,
+	validatePassword,
+	validateEmail,
+} from './password';
+
+// User service
+export { UserService } from './user-service';
+
 // User management
 export {
 	getUserByGoogleId,

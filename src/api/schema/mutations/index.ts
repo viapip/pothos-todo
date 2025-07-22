@@ -1,4 +1,5 @@
 import { builder } from '../builder.js';
+import './auth.js'; // Import auth mutations to register them
 
 // Define the root Mutation type
 builder.mutationType({

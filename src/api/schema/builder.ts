@@ -14,11 +14,13 @@ import type { User } from '../../domain/aggregates/User.js';
 import type { Container } from '../../infrastructure/container/Container.js';
 import type PrismaTypes from '@pothos/plugin-prisma/generated';
 import type { SessionWithUser } from '@/lib/auth';
+import type { H3Event } from 'h3';
 
 export interface Context {
   user: User | null;
   container: Container;
   session: SessionWithUser | null;
+  h3Event?: H3Event
 }
 
 export const builder = new SchemaBuilder<{

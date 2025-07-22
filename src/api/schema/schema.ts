@@ -1,6 +1,9 @@
 import { builder } from './builder.js';
 
-// Import root types first
+// Import authentication types first
+import './types/auth.js';
+
+// Import root types
 import './queries/index.js';
 import './mutations/index.js';
 
