@@ -102,7 +102,7 @@ export interface CacheKey {
   key: string;
   level: CacheLevel;
   ttl?: number;
-  tags?: string[];
+  tags?: readonly string[];
   version?: string;
 }
 
@@ -209,8 +209,8 @@ export interface CachePolicy {
   strategy: CacheStrategy;
   ttl: number;
   staleWhileRevalidate?: number;
-  tags: string[];
-  invalidateOn: string[];
+  tags: readonly string[];
+  invalidateOn: readonly string[];
   version?: string;
 }
 
@@ -300,6 +300,12 @@ export interface CacheManager {
   addMiddleware(middleware: CacheMiddleware): void;
   invalidateByTag(tag: string): Promise<number>;
   invalidateByPattern(pattern: string): Promise<number>;
+  getOrSet<T = any>(
+    key: string | CacheKey,
+    factory: () => Promise<T> | T,
+    ttl?: number,
+    strategy?: CacheStrategy
+  ): Promise<T>;
 }
 
 export interface CachedGraphQLContext {
@@ -311,7 +317,7 @@ export interface CachedGraphQLContext {
 export interface CacheHint {
   path: string;
   maxAge: number;
-  tags?: string[];
+  tags?: readonly string[];
   version?: string;
 }
 

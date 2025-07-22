@@ -14,6 +14,8 @@ import {
 } from '../monitoring/metrics.js';
 import type { 
   CacheConfig,
+} from './types.js';
+import { 
   CacheError,
   CacheConnectionError,
   CacheTimeoutError
@@ -63,7 +65,6 @@ export class RedisClientManager extends EventEmitter {
         family: this.config.redis.family,
         keepAlive: this.config.redis.keepAlive,
         retryStrategy: this.config.redis.retryStrategy,
-        maxLoadingTimeout: 5000,
       });
 
       // Create subscriber client for cache invalidation
@@ -127,18 +128,18 @@ export class RedisClientManager extends EventEmitter {
       }
 
       // Disconnect clients
-      const disconnectPromises: Promise<void>[] = [];
+      const disconnectPromises: Promise<string>[] = [];
       
       if (this.client) {
-        disconnectPromises.push(this.client.disconnect());
+        disconnectPromises.push(this.client.quit());
       }
       
       if (this.subscriber) {
-        disconnectPromises.push(this.subscriber.disconnect());
+        disconnectPromises.push(this.subscriber.quit());
       }
       
       if (this.publisher) {
-        disconnectPromises.push(this.publisher.disconnect());
+        disconnectPromises.push(this.publisher.quit());
       }
 
       await Promise.all(disconnectPromises);
@@ -189,7 +190,7 @@ export class RedisClientManager extends EventEmitter {
       this.handleReconnect();
     });
 
-    this.client.on('reconnecting', (delay) => {
+    this.client.on('reconnecting', (delay: number) => {
       logger.info('Redis main client reconnecting', { delay });
       this.reconnectAttempts++;
     });
@@ -287,8 +288,11 @@ export class RedisClientManager extends EventEmitter {
       let usedMemory = 0;
       for (const line of memoryLines) {
         if (line.startsWith('used_memory:')) {
-          usedMemory = parseInt(line.split(':')[1], 10);
-          break;
+          const parts = line.split(':');
+          if (parts[1]) {
+            usedMemory = parseInt(parts[1], 10);
+            break;
+          }
         }
       }
 

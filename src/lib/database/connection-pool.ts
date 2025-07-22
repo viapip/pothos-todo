@@ -539,7 +539,7 @@ export class DatabaseConnectionPool extends EventEmitter {
       duration
     );
     
-    databaseQueryDuration.observe({ operation, status: success ? 'success' : 'error' }, duration / 1000);
+    databaseQueryDuration.observe({ operation, model: operation }, duration / 1000);
     
     if (this.config.enablePerformanceInsights) {
       this.stats.queryTimes.push(duration);

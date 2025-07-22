@@ -404,8 +404,8 @@ export async function createRedisHealthCheck(): Promise<HealthCheck> {
     const redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
-      retryDelayOnFailover: 100,
       maxRetriesPerRequest: 1,
+      retryStrategy: (times) => Math.min(times * 50, 2000),
     });
     
     await redis.ping();

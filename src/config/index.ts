@@ -390,24 +390,5 @@ export async function exportConfig(): Promise<AppConfig> {
   return await loadAppConfig();
 }
 
-// Default export for convenience
-export default {
-  loadAppConfig,
-  getCurrentConfig,
-  watchAppConfig,
-  stopWatchingConfig,
-  validateConfig,
-  getConfigValue,
-  getServerConfig,
-  getDatabaseConfig,
-  getLoggerConfig,
-  getBuildConfig,
-  getCLIConfig,
-  getDockerConfig,
-  getGraphQLConfig,
-  getEnvironmentConfig,
-  isDevelopment,
-  isProduction,
-  isTest,
-  exportConfig,
-};
+// Remove default export to fix mixed export warning
+// All functions are available as named exports

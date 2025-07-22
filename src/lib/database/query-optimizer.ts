@@ -143,7 +143,9 @@ export class DatabaseQueryOptimizer {
     if (this.queryCache.size >= this.options.maxQueryCacheSize) {
       // Remove oldest entry
       const oldestKey = this.queryCache.keys().next().value;
-      this.queryCache.delete(oldestKey);
+      if (oldestKey) {
+        this.queryCache.delete(oldestKey);
+      }
     }
     
     this.queryCache.set(cacheKey, analysis);
@@ -395,7 +397,7 @@ export class DatabaseQueryOptimizer {
 
   private extractCostFromPlan(plan: string): number {
     const costMatch = plan.match(/cost=([0-9.]+)\.\.[0-9.]+/);
-    return costMatch ? parseFloat(costMatch[1]) : 0;
+    return costMatch && costMatch[1] ? parseFloat(costMatch[1]) : 0;
   }
 
   private generateIndexRecommendations(plan: string): string[] {
@@ -428,7 +430,7 @@ export class DatabaseQueryOptimizer {
     }
     
     const costMatch = plan.match(/cost=([0-9.]+)/);
-    if (costMatch && parseFloat(costMatch[1]) > 10000) {
+    if (costMatch && costMatch[1] && parseFloat(costMatch[1]) > 10000) {
       suggestions.push('High cost query - consider breaking into smaller operations');
     }
     
@@ -547,8 +549,11 @@ export class DatabaseQueryOptimizer {
     if (cacheEntries.length > this.options.maxQueryCacheSize * 0.8) {
       // Remove 20% of oldest entries
       const toRemove = Math.floor(cacheEntries.length * 0.2);
-      for (let i = 0; i < toRemove; i++) {
-        this.queryCache.delete(cacheEntries[i][0]);
+      for (let i = 0; i < toRemove && i < cacheEntries.length; i++) {
+        const entry = cacheEntries[i];
+        if (entry) {
+          this.queryCache.delete(entry[0]);
+        }
       }
     }
 

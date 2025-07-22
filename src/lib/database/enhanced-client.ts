@@ -29,7 +29,18 @@ export class EnhancedDatabaseClient {
     }>
   ) {
     this.connectionPool = new DatabaseConnectionPool(poolConfig);
-    this.queryOptimizer = new DatabaseQueryOptimizer(this.connectionPool, optimizerConfig);
+    
+    // Provide defaults for optimizer config
+    const fullOptimizerConfig = {
+      enableQueryAnalysis: true,
+      enablePreparedStatements: true,
+      slowQueryThreshold: 1000,
+      maxPreparedStatements: 100,
+      maxQueryCacheSize: 500,
+      ...optimizerConfig,
+    };
+    
+    this.queryOptimizer = new DatabaseQueryOptimizer(this.connectionPool, fullOptimizerConfig);
     
     this.setupCleanupTasks();
   }

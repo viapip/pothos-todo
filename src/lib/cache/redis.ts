@@ -78,7 +78,6 @@ export async function initRedis(): Promise<Redis> {
         const delay = Math.min(times * 50, 2000);
         return delay;
       },
-      maxLoadingTimeout: 5000,
     });
 
     // Event listeners for connection monitoring

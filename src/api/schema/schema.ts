@@ -23,4 +23,5 @@ export const federationSchema = builder.toSubGraphSchema({
   linkUrl: 'https://specs.apollo.dev/federation/v2.0',
 });
 
-export default schema;
+// Remove default export to fix mixed export warning
+// Use named export 'schema' instead

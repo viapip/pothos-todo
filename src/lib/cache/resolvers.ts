@@ -43,14 +43,17 @@ function generateCacheKey(
 export function createCachedResolver<TSource, TArgs, TContext extends CachedGraphQLContext, TReturn>(
   typeName: string,
   fieldName: string,
-  resolver: CacheableResolver<TSource, TArgs, TContext, TReturn>['resolve'],
+  resolver: CacheableResolver<TSource, TArgs, TContext, TReturn> | ((source: TSource, args: TArgs, context: TContext, info: any) => Promise<TReturn> | TReturn),
   policy: CachePolicy = CACHE_POLICIES.TODO_DATA
 ): (source: TSource, args: TArgs, context: TContext, info: any) => Promise<TReturn> {
   return async (source: TSource, args: TArgs, context: TContext, info: any): Promise<TReturn> => {
     const startTime = Date.now();
-    const cacheKey = resolver.cacheKeyGenerator 
-      ? resolver.cacheKeyGenerator(source, args, context)
-      : generateCacheKey(typeName, fieldName, args, context.user?.id);
+    const resolverFn = typeof resolver === 'function' ? resolver : resolver.resolve;
+    const cacheKeyGenerator = typeof resolver === 'function' ? undefined : resolver.cacheKeyGenerator;
+    
+    const cacheKey = cacheKeyGenerator 
+      ? cacheKeyGenerator(source, args, context)
+      : generateCacheKey(typeName, fieldName, args, (context as any)?.user?.id);
 
     try {
       // Try to get from cache based on strategy
@@ -64,7 +67,7 @@ export function createCachedResolver<TSource, TArgs, TContext extends CachedGrap
           });
           
           const resolverStartTime = Date.now();
-          const result = await resolver(source, args, context, info);
+          const result = await resolverFn(source, args, context, info);
           const resolverDuration = Date.now() - resolverStartTime;
           
           // Record resolver execution time

@@ -261,7 +261,7 @@ export class JWTTokenManager {
   }
 
   async validateRefreshToken(token: string): Promise<TokenValidationResult> {
-    const span = authTracer.traceTokenValidation('refresh');
+    const span = authTracer.traceTokenValidation('jwt');
     
     try {
       const payload = jwt.verify(token, this.config.refreshTokenSecret, {
@@ -355,9 +355,9 @@ export class JWTTokenManager {
       roles,
       permissions,
       {
-        sessionId: payload.sessionId,
-        deviceId: payload.deviceId,
-        metadata: payload.metadata,
+        sessionId: payload.sessionId ?? undefined,
+        deviceId: payload.deviceId ?? undefined,
+        metadata: payload.metadata ?? undefined,
       }
     );
 
@@ -368,7 +368,7 @@ export class JWTTokenManager {
 
     logger.info('Token pair refreshed', {
       userId: payload.sub,
-      deviceId: payload.deviceId,
+      deviceId: payload.deviceId ?? 'unknown',
       oldJti: payload.jti,
     });
 
