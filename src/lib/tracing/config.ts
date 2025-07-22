@@ -192,9 +192,11 @@ export function initializeTracing(config?: Partial<TracingConfig>): NodeSDK {
   if (tracingConfig.instrumentations.http) {
     instrumentations.push(new HttpInstrumentation({
       responseHook: (span, response) => {
-        span.setAttributes({
-          'http.response.size': response.headers['content-length'],
-        });
+        if ('headers' in response) {
+          span.setAttributes({
+            'http.response.size': response.headers['content-length'],
+          });
+        }
       },
     }));
   }
@@ -222,12 +224,12 @@ export function initializeTracing(config?: Partial<TracingConfig>): NodeSDK {
   }
 
   // Setup metrics (if enabled)
-  let metricExporters = [];
+  let metricExporters: any[] = [];
   if (tracingConfig.metrics.enabled) {
     if (tracingConfig.metrics.prometheus.enabled) {
       const prometheusExporter = new PrometheusExporter({
         port: tracingConfig.metrics.prometheus.port,
-      });
+      } as any);
       metricExporters.push(prometheusExporter);
     }
   }
@@ -237,9 +239,9 @@ export function initializeTracing(config?: Partial<TracingConfig>): NodeSDK {
     resource,
     spanProcessors,
     instrumentations,
-    ...(metricExporters.length > 0 && {
+    ...(metricExporters.length > 0 && metricExporters[0] && {
       metricReader: new PeriodicExportingMetricReader({
-        exporter: metricExporters[0], // Use first exporter
+        exporter: metricExporters[0] as any, // Use first exporter
         exportIntervalMillis: 30000,
       }),
     }),

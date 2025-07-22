@@ -78,7 +78,7 @@ async function startServer() {
     // });
     
     // Initialize cache manager
-    await initializeCacheManager();
+    // await initializeCacheManager(); // Temporarily disabled for debugging
     
     // Initialize enhanced database client
     await initializeEnhancedDatabase({

@@ -62,9 +62,6 @@ export class RedisClientManager extends EventEmitter {
         maxRetriesPerRequest: this.config.redis.maxRetriesPerRequest,
         connectTimeout: this.config.redis.connectTimeout,
         lazyConnect: this.config.redis.lazyConnect,
-        family: this.config.redis.family,
-        keepAlive: this.config.redis.keepAlive,
-        retryStrategy: this.config.redis.retryStrategy,
       });
 
       // Create subscriber client for cache invalidation

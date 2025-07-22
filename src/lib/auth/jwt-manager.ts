@@ -481,8 +481,8 @@ export class JWTTokenManager {
       const tokensArray = Array.from(userTokens);
       const oldestToken = tokensArray[0];
       
-      this.blacklistToken(oldestToken);
-      userTokens.delete(oldestToken);
+      this.blacklistToken(oldestToken!);
+      userTokens.delete(oldestToken!);
       
       logger.info('Session limit enforced', {
         userId,
@@ -529,8 +529,8 @@ export class JWTTokenManager {
       throw new Error(`Invalid expiry format: ${expiry}`);
     }
 
-    const value = parseInt(match[1]);
-    const unit = match[2];
+    const value = parseInt(match[1]!, 10);
+    const unit = match[2]!;
 
     const multipliers = {
       s: 1,

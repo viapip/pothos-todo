@@ -44,7 +44,7 @@ export function createGraphQLTracingMiddleware() {
           'component': 'graphql',
           'operation': 'parse',
         },
-      }, context.setSpan(parseContext.requestContext.traceContext, span));
+      }, trace.setSpan(parseContext.requestContext.traceContext, span));
 
       parseContext.parseSpan = parseSpan;
     },
@@ -77,7 +77,7 @@ export function createGraphQLTracingMiddleware() {
           'component': 'graphql',
           'operation': 'validate',
         },
-      }, context.setSpan(validateContext.requestContext.traceContext, span));
+      }, trace.setSpan(validateContext.requestContext.traceContext, span));
 
       validateContext.validateSpan = validateSpan;
     },
@@ -111,7 +111,7 @@ export function createGraphQLTracingMiddleware() {
           'component': 'graphql',
           'operation': 'execute',
         },
-      }, context.setSpan(executeContext.requestContext.traceContext, span));
+      }, trace.setSpan(executeContext.requestContext.traceContext, span));
 
       executeContext.executeSpan = executeSpan;
 
@@ -404,7 +404,7 @@ export function createSubscriptionTracer() {
           'subscription.event.type': eventType,
           'subscription.event.data_size': eventData ? JSON.stringify(eventData).length : 0,
         },
-      }, context.setSpan(context.active(), subscriptionSpan));
+      }, trace.setSpan(context.active(), subscriptionSpan));
 
       eventSpan.setStatus({ code: SpanStatusCode.OK });
       eventSpan.end();

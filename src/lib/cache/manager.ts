@@ -103,7 +103,7 @@ class L2Cache {
       createdAt: now,
       expiresAt: expireTime,
       metadata: {
-        source: 'unknown',
+        source: 'api',
         hitCount: 0,
         lastAccessed: now,
         size: this.calculateSize(value),
@@ -161,8 +161,6 @@ class L2Cache {
       .reduce((total, entry) => total + (entry.metadata?.size || 0), 0);
 
     return {
-      hits: this.stats.hits,
-      misses: this.stats.misses,
       size: this.cache.size,
       hitRate,
       memory: memoryUsage,
@@ -304,10 +302,10 @@ export class CacheManager extends EventEmitter implements CacheEventEmitter {
 
               // Populate L2 cache
               if (this.config.levels.l2.enabled && ttl > 0) {
-                this.l2Cache.set(cacheKey.key, parsedValue, Math.min(ttl, this.config.levels.l2.ttl));
+                this.l2Cache.set(cacheKey.key, parsedValue as any, Math.min(ttl, this.config.levels.l2.ttl));
               }
 
-              await this.runMiddleware('afterGet', cacheKey.key, result.value, true, 'l3');
+              await this.runMiddleware('afterGet', cacheKey.key, parsedValue as T, true, 'l3');
               this.recordMetrics('get', 'l3', Date.now() - startTime, true, cacheKey.key);
               this.emit('hit', cacheKey.key, 'l3', result.value);
               return result;
@@ -354,7 +352,7 @@ export class CacheManager extends EventEmitter implements CacheEventEmitter {
 
       // Set in L2 cache
       if ((level === 'all' || level === 'l2') && this.config.levels.l2.enabled) {
-        this.l2Cache.set(cacheKey.key, value, effectiveTTL);
+        this.l2Cache.set(cacheKey.key, value as any, effectiveTTL);
       }
 
       // Set in Redis (L3)

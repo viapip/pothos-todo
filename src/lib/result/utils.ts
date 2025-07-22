@@ -178,7 +178,7 @@ export class CircuitBreaker<T> {
     };
   }
 
-  execute(): ResultAsync<T, AppError> {
+  async execute(): Promise<ResultAsync<T, AppError>> {
     if (this.state === 'open') {
       const timeSinceLastFailure = Date.now() - this.lastFailureTime;
       if (timeSinceLastFailure < this.options.resetTimeout!) {
@@ -190,7 +190,8 @@ export class CircuitBreaker<T> {
       this.state = 'half-open';
     }
 
-    return this.operation().match(
+    const result = await this.operation();
+    return result.match(
       (_value) => {  // eslint-disable-line @typescript-eslint/no-unused-vars 
         this.onSuccess();
         return this.operation();
@@ -366,7 +367,7 @@ export const asyncPipeline = <T>(
 ): ((input: T) => AsyncAppResult<T>) => {
       return (input: T) => { 
         return fns.reduce(
-            (acc, fn) => acc.andThen(fn),
+            (acc: AsyncAppResult<T>, fn: (input: T) => AsyncAppResult<T>) => acc.andThen(fn),
             ResultAsync.fromSafePromise(Promise.resolve(input))
         );
     };
