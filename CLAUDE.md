@@ -238,3 +238,95 @@ Detailed documentation available in `docs/` directory covering:
 - GraphQL code generation runs automatically via Pothos
 - All async operations use Bun's optimized runtime
 - Federation support allows microservice architecture
+
+## AI and Vector Search Features
+
+### Infrastructure Components
+
+1. **Vector Database**: Qdrant for storing and searching embeddings
+2. **Embedding Service**: OpenAI text-embedding-3-small model
+3. **NLP Service**: OpenAI GPT-4 mini for natural language processing
+4. **Cache Layer**: Redis for query result caching
+5. **Event-Driven Embedding**: Automatic embedding generation on todo/list changes
+
+### AI-Powered GraphQL Queries
+
+- `searchTodos`: Semantic search across user's todos
+- `findSimilarTodos`: Find todos similar to a specific todo
+- `suggestTodos`: AI-powered task suggestions based on user patterns
+
+### NLP-Powered Mutations
+
+- `executeNLPCommand`: Process natural language commands
+  - Examples: "Create a todo to buy groceries tomorrow with high priority"
+  - Supports: create, update, complete, delete, and list actions
+- `generateTaskSuggestions`: Get AI-powered task suggestions based on context
+- `createTodoWithAI`: Create todos with AI-suggested priority and completion time predictions
+- `createTodosFromSuggestions`: Batch create todos from AI suggestions
+
+### RAG (Retrieval-Augmented Generation) Queries
+
+- `askAboutTodos`: Ask questions about your todos using natural language
+  - Example: "What are my highest priority tasks this week?"
+  - Returns AI-generated answers with source citations
+- `getUserInsights`: Get AI-generated insights about productivity patterns
+- `explainTask`: Get detailed explanations and breakdowns of specific tasks
+
+### ML-Powered Predictions
+
+- `predictCompletionTime`: Estimate how long a task will take based on historical data
+- `suggestPriority`: Get AI-suggested priority for new tasks
+- `analyzeTaskComplexity`: Analyze task complexity, dependencies, and risks
+- `predictNextActions`: Get personalized suggestions for what to work on next
+
+### Configuration
+
+Set these environment variables for AI features:
+```bash
+# OpenAI Configuration
+OPENAI_API_KEY=your-api-key
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+OPENAI_EMBEDDING_DIMENSIONS=1536
+
+# Qdrant Configuration  
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=optional-api-key
+
+# Enable/Disable AI
+AI_ENABLED=true
+```
+
+### Architecture
+
+1. **Embedding Generation**: 
+   - Automatic via domain events (TodoCreated, TodoUpdated)
+   - Stored in both PostgreSQL and Qdrant
+   - Includes metadata for filtering
+
+2. **Search Pipeline**:
+   - Query → Embedding → Vector Search → Score Filtering → Results
+   - User-scoped searches for security
+   - Configurable similarity thresholds
+
+3. **RAG System**:
+   - Retrieves relevant todos based on semantic similarity
+   - Uses GPT-4 mini for response generation
+   - Includes source attribution and confidence scores
+
+4. **ML Predictions**:
+   - Historical data analysis for time estimation
+   - Pattern recognition for priority suggestions
+   - Complexity analysis using task context
+
+5. **Caching Strategy**:
+   - GraphQL query results cached in Redis
+   - Cache invalidation on mutations
+   - Tag-based cache management
+
+### Services Architecture
+
+- **EmbeddingService**: Manages vector embeddings with OpenAI
+- **NLPService**: Processes natural language commands
+- **RAGService**: Implements retrieval-augmented generation
+- **MLPredictionService**: Provides machine learning predictions
+- **VectorStore**: Manages Qdrant vector database operations

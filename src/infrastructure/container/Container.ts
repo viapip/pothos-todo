@@ -9,7 +9,13 @@ import { CreateTodoHandler } from '../../application/handlers/CreateTodoHandler.
 import { UpdateTodoHandler } from '../../application/handlers/UpdateTodoHandler.js';
 import { CompleteTodoHandler } from '../../application/handlers/CompleteTodoHandler.js';
 import { DeleteTodoHandler } from '../../application/handlers/DeleteTodoHandler.js';
+import { ExecuteNLPCommandHandler } from '../../application/handlers/ExecuteNLPCommandHandler.js';
 import { CacheManager } from '../cache/CacheManager.js';
+import { VectorStore } from '../ai/VectorStore.js';
+import { EmbeddingService } from '../ai/EmbeddingService.js';
+import { NLPService } from '../ai/NLPService.js';
+import { RAGService } from '../ai/RAGService.js';
+import { MLPredictionService } from '../ai/MLPredictionService.js';
 
 export class Container {
   private static instance: Container;
@@ -22,11 +28,17 @@ export class Container {
   private readonly _eventPublisher: InMemoryEventPublisher;
   private readonly _eventHandlerRegistry: EventHandlerRegistry;
   private readonly _cacheManager: CacheManager;
+  private readonly _vectorStore: VectorStore;
+  private readonly _embeddingService: EmbeddingService;
+  private readonly _nlpService: NLPService;
+  private readonly _ragService: RAGService;
+  private readonly _mlPredictionService: MLPredictionService;
   
   private readonly _createTodoHandler: CreateTodoHandler;
   private readonly _updateTodoHandler: UpdateTodoHandler;
   private readonly _completeTodoHandler: CompleteTodoHandler;
   private readonly _deleteTodoHandler: DeleteTodoHandler;
+  private readonly _executeNLPCommandHandler: ExecuteNLPCommandHandler;
 
   private constructor() {
     this._prisma = new PrismaClient();
@@ -39,11 +51,31 @@ export class Container {
     this._eventPublisher = new InMemoryEventPublisher(this._eventStore);
     this._eventHandlerRegistry = new EventHandlerRegistry(this._eventPublisher);
     this._cacheManager = CacheManager.getInstance();
+    this._vectorStore = VectorStore.getInstance();
+    this._embeddingService = EmbeddingService.getInstance(this._prisma);
+    this._nlpService = NLPService.getInstance();
+    this._ragService = RAGService.getInstance(this._embeddingService, this._vectorStore);
+    this._mlPredictionService = MLPredictionService.getInstance(this._prisma);
     
     this._createTodoHandler = new CreateTodoHandler(this._todoRepository, this._eventPublisher);
     this._updateTodoHandler = new UpdateTodoHandler(this._todoRepository, this._eventPublisher);
     this._completeTodoHandler = new CompleteTodoHandler(this._todoRepository, this._eventPublisher);
     this._deleteTodoHandler = new DeleteTodoHandler(this._todoRepository, this._eventPublisher);
+    this._executeNLPCommandHandler = new ExecuteNLPCommandHandler(
+      this._nlpService,
+      this._createTodoHandler,
+      this._updateTodoHandler,
+      this._completeTodoHandler,
+      this._deleteTodoHandler,
+      this._todoRepository
+    );
+  }
+  
+  async initializeEmbeddingHandler(): Promise<void> {
+    // Import dynamically to avoid circular dependency
+    const { TodoEmbeddingHandler } = await import('../events/handlers/TodoEmbeddingHandler.js');
+    const handler = new TodoEmbeddingHandler(this._embeddingService, this._todoRepository);
+    this._eventHandlerRegistry.setEmbeddingHandler(handler);
   }
 
   static getInstance(): Container {
@@ -81,6 +113,26 @@ export class Container {
     return this._cacheManager;
   }
 
+  get vectorStore(): VectorStore {
+    return this._vectorStore;
+  }
+
+  get embeddingService(): EmbeddingService {
+    return this._embeddingService;
+  }
+
+  get nlpService(): NLPService {
+    return this._nlpService;
+  }
+
+  get ragService(): RAGService {
+    return this._ragService;
+  }
+
+  get mlPredictionService(): MLPredictionService {
+    return this._mlPredictionService;
+  }
+
   get createTodoHandler(): CreateTodoHandler {
     return this._createTodoHandler;
   }
@@ -95,6 +147,10 @@ export class Container {
 
   get deleteTodoHandler(): DeleteTodoHandler {
     return this._deleteTodoHandler;
+  }
+
+  get executeNLPCommandHandler(): ExecuteNLPCommandHandler {
+    return this._executeNLPCommandHandler;
   }
 
   async disconnect(): Promise<void> {

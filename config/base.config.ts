@@ -141,4 +141,18 @@ export default {
       ttl: parseInt(process.env.CACHE_DEFAULT_TTL || '3600'), // 1 hour default
     },
   },
+
+  // AI Configuration
+  ai: {
+    enabled: process.env.AI_ENABLED !== 'false',
+    openai: {
+      apiKey: process.env.OPENAI_API_KEY || '',
+      model: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
+      dimensions: parseInt(process.env.OPENAI_EMBEDDING_DIMENSIONS || '1536'),
+    },
+    vectorStore: {
+      url: process.env.QDRANT_URL || 'http://localhost:6333',
+      apiKey: process.env.QDRANT_API_KEY || undefined,
+    },
+  },
 };

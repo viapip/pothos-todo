@@ -1,4 +1,4 @@
-import SchemaBuilder from '@pothos/core';
+import SchemaBuilder, { type SchemaTypes } from '@pothos/core';
 import PrismaPlugin from '@pothos/plugin-prisma';
 import RelayPlugin from '@pothos/plugin-relay';
 import ValidationPlugin from '@pothos/plugin-validation';
@@ -17,12 +17,21 @@ import type { SessionWithUser } from '@/lib/auth';
 import type { H3Event } from 'h3';
 import PrismaUtils from '@pothos/plugin-prisma-utils';
 import DirectivesPlugin from '@pothos/plugin-directives';
+import { performancePlugin } from './plugins/performance.js';
+import type { PerformanceFieldOptions } from './plugins/performance.js';
 
-  export interface Context {
+export interface Context {
   user: User | null;
   container: Container;
   session: SessionWithUser | null;
   h3Event?: H3Event
+}
+
+// Extend Pothos field options with performance options
+declare module '@pothos/core' {
+  export interface FieldOptions<Types extends SchemaTypes = SchemaTypes, ParentShape = unknown, Type = unknown, Nullable = false, Args extends {} = {}, ResolveReturnShape = unknown> {
+    performance?: PerformanceFieldOptions;
+  }
 }
 
 export const builder = new SchemaBuilder<{
@@ -77,11 +86,11 @@ export const builder = new SchemaBuilder<{
         const { getTracer } = require('@/infrastructure/telemetry/telemetry');
         return getTracer('graphql');
       };
-      
+
       return async (source, args, context, info) => {
         const tracer = getTracerLazy();
         const spanName = `GraphQL.${info.parentType.name}.${info.fieldName}`;
-        
+
         const span = tracer.startSpan(spanName, {
           attributes: {
             'graphql.operation.type': info.operation.operation,
@@ -91,7 +100,7 @@ export const builder = new SchemaBuilder<{
             'graphql.field.path': info.path,
           },
         });
-        
+
         try {
           const result = await resolver(source, args, context, info);
           span.setStatus({ code: 1 }); // OK
@@ -122,4 +131,8 @@ builder.objectType(Error, {
   }),
 });
 
+// Apply performance plugin
+performancePlugin(builder);
+
 export default builder;
+export type SchemaBuilder = typeof builder;

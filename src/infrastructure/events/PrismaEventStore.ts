@@ -1,9 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type DomainEvent as PrismaDomainEvent } from '@prisma/client';
 import type { EventStore, StoredEvent } from './EventStore.js';
 import { DomainEvent } from '../../domain/events/DomainEvent.js';
+import type { JsonValue } from '@prisma/client/runtime/library';
 
 export class PrismaEventStore implements EventStore {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClient) { }
 
   async append(event: DomainEvent): Promise<void> {
     await this.prisma.domainEvent.create({
@@ -73,14 +74,23 @@ export class PrismaEventStore implements EventStore {
     return events.map(this.mapToStoredEvent);
   }
 
-  private mapToStoredEvent(event: any): StoredEvent {
+  private mapToStoredEvent(event: PrismaDomainEvent): StoredEvent {
+    const {
+      eventData,
+      id,
+      eventType,
+      aggregateId,
+      version,
+      createdAt
+    } = event;
+
     return {
-      id: event.id,
-      eventType: event.eventType,
-      aggregateId: event.aggregateId,
-      eventData: event.eventData,
-      version: event.version,
-      createdAt: event.createdAt,
+      id,
+      eventType,
+      aggregateId,
+      eventData,
+      version,
+      createdAt,
     };
   }
 }

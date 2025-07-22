@@ -241,7 +241,7 @@ export function getServerConfig() {
 export function getSessionConfig() {
   return getConfigValueSafe('server.session', {
     secret: 'fallback-key',
-    name: 'h3-session', 
+    name: 'h3-session',
     maxAge: 60 * 60 * 24 * 7,
     secure: false,
     sameSite: 'lax' as const,
@@ -348,6 +348,24 @@ export function getCacheConfig() {
       db: 0,
       keyPrefix: 'pothos:',
       ttl: 3600,
+    },
+  });
+}
+
+/**
+ * Get AI configuration
+ */
+export function getAIConfig() {
+  return getConfigValueSafe('ai', {
+    enabled: true,
+    openai: {
+      apiKey: '',
+      model: 'text-embedding-3-small',
+      dimensions: 1536,
+    },
+    vectorStore: {
+      url: 'http://localhost:6333',
+      apiKey: undefined,
     },
   });
 }

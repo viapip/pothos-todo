@@ -1,0 +1,39 @@
+# Test subscription for real-time todo updates
+subscription TodoChanges {
+  todoChanges {
+    type
+    todo {
+      id
+      title
+      description
+      status
+      priority
+      createdAt
+      updatedAt
+    }
+  }
+}
+
+# Test subscription for user presence
+subscription UserPresence {
+  userPresence {
+    user {
+      id
+      name
+      email
+    }
+    status
+    lastActivity
+  }
+}
+
+# Test subscription for AI insights
+subscription AIInsightsStream($userId: String!) {
+  aiInsights(userId: $userId) {
+    type
+    productivity
+    patterns
+    recommendations
+    timestamp
+  }
+}

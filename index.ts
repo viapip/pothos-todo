@@ -7,6 +7,7 @@ import {
   getSessionConfig,
   getTelemetryConfig,
   getCacheConfig,
+  getAIConfig,
 } from "./src/config/index.js";
 import {
   handleGoogleLogin,
@@ -19,6 +20,9 @@ import {
 import { createServer } from "node:http";
 import { initializeTelemetry, shutdownTelemetry } from "./src/infrastructure/telemetry/telemetry.js";
 import { CacheManager } from "./src/infrastructure/cache/CacheManager.js";
+import { Container } from "./src/infrastructure/container/Container.js";
+import { websocketHandler } from "./src/routes/websocket.js";
+import { graphqlWebSocketHandler } from "./src/routes/graphql-ws.js";
 
 async function startServer() {
   try {
@@ -28,6 +32,7 @@ async function startServer() {
     const sessionConfig = getSessionConfig();
     const telemetryConfig = getTelemetryConfig();
     const cacheConfig = getCacheConfig();
+    const aiConfig = getAIConfig();
 
     // Initialize telemetry if enabled
     if (telemetryConfig.enabled) {
@@ -40,6 +45,27 @@ async function startServer() {
       const cacheManager = CacheManager.getInstance();
       await cacheManager.connect();
       logger.info("Cache manager initialized");
+    }
+
+    // Initialize AI services if enabled
+    if (aiConfig.enabled) {
+      const container = Container.getInstance();
+
+      // Initialize vector store
+      await container.vectorStore.connect(aiConfig.vectorStore.url);
+      logger.info("Vector store initialized");
+
+      // Initialize AI services
+      if (aiConfig.openai.apiKey) {
+        container.embeddingService.initialize(aiConfig.openai.apiKey);
+        container.nlpService.initialize(aiConfig.openai.apiKey);
+        container.ragService.initialize(aiConfig.openai.apiKey);
+        container.mlPredictionService.initialize(aiConfig.openai.apiKey);
+        await container.initializeEmbeddingHandler();
+        logger.info("AI services initialized (Embedding, NLP, RAG, ML Predictions)");
+      } else {
+        logger.warn("OpenAI API key not configured, AI features will be limited");
+      }
     }
 
     // Create H3 app
@@ -124,11 +150,27 @@ async function startServer() {
       })
     );
 
-    // Mount GraphQL Yoga
+    // Mount GraphQL Yoga with WebSocket support
     app.use(
       "/graphql",
       eventHandler(async (event) => {
+        // Check if this is a WebSocket upgrade request
+        if (event.node.req.headers.upgrade === 'websocket') {
+          return graphqlWebSocketHandler(event);
+        }
         return yoga(event.node.req, event.node.res, { h3Event: event });
+      })
+    );
+    
+    // Mount WebSocket handler
+    app.use(
+      "/websocket",
+      eventHandler(async (event) => {
+        // Check if this is a WebSocket upgrade request
+        if (event.node.req.headers.upgrade === 'websocket') {
+          return websocketHandler(event);
+        }
+        return { status: 426, statusText: 'Upgrade Required' };
       })
     );
 
@@ -141,6 +183,10 @@ async function startServer() {
         host: serverConfig.host,
         graphqlEndpoint: yoga.graphqlEndpoint,
         graphiqlUrl: `http://${serverConfig.host}:${serverConfig.port}${yoga.graphqlEndpoint}`,
+        webSocketEndpoints: [
+          `ws://${serverConfig.host}:${serverConfig.port}/websocket`,
+          `ws://${serverConfig.host}:${serverConfig.port}/graphql`
+        ],
         authEndpoints: [
           "/auth/google",
           "/auth/google/callback",
@@ -155,28 +201,38 @@ async function startServer() {
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
       logger.info(`Received ${signal}, shutting down gracefully`);
-      
+
       server.close(async () => {
         logger.info("HTTP server closed");
-        
+
+        // WebSocket cleanup is handled by H3/crossws
+        logger.info("WebSocket connections closed");
+
+        // Shutdown AI services
+        if (aiConfig.enabled) {
+          const container = Container.getInstance();
+          await container.vectorStore.disconnect();
+          logger.info("Vector store shutdown complete");
+        }
+
         // Shutdown cache manager
         if (cacheConfig.enabled) {
           const cacheManager = CacheManager.getInstance();
           await cacheManager.disconnect();
           logger.info("Cache manager shutdown complete");
         }
-        
+
         // Shutdown telemetry
         if (telemetryConfig.enabled) {
           await shutdownTelemetry();
           logger.info("Telemetry shutdown complete");
         }
-        
+
         // Add any other cleanup here
         logger.info("Graceful shutdown complete");
         process.exit(0);
       });
-      
+
       // Force shutdown after 10 seconds
       setTimeout(() => {
         logger.error("Forced shutdown due to timeout");

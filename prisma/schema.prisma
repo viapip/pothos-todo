@@ -77,6 +77,7 @@ model Todo {
   completedAt DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  tags        String[]
 
   // Relations
   userId     String
@@ -110,4 +111,20 @@ enum Priority {
   MEDIUM
   HIGH
   URGENT
+}
+
+model Embedding {
+  id         String   @id @default(cuid())
+  entityType String // 'todo', 'todoList', etc.
+  entityId   String // ID of the entity
+  content    String   @db.Text // Original text content
+  embedding  Json // Vector embedding stored as JSON array
+  model      String // Model used for embedding (e.g., 'text-embedding-ada-002')
+  dimensions Int // Number of dimensions in the embedding
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([entityType, entityId])
+  @@index([entityType])
+  @@map("embeddings")
 }

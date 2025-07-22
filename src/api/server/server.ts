@@ -8,7 +8,7 @@ import type { Context } from "../schema/builder.js";
 import type { H3Event } from "h3";
 
 type YogaContext = {
-  h3Event: H3Event;
+  h3Event?: H3Event;
 };
 
 const container = Container.getInstance();
@@ -19,10 +19,12 @@ export function createYogaWithH3Context() {
     schema,
     context: async ({ h3Event }) => {
       const contextCache = initContextCache();
+      
+      // For HTTP requests
       return {
         ...contextCache,
         container,
-        h3Event: h3Event,
+        h3Event: h3Event!,
         user: null,
         session: null,
       };
@@ -31,7 +33,6 @@ export function createYogaWithH3Context() {
     graphiql: {
       title: "Pothos Todo GraphQL API",
     },
-    plugins: [],
   });
 }
 

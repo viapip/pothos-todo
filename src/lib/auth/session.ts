@@ -25,7 +25,7 @@ export function generateSessionToken(): string {
 	// Generate 24 bytes = 192 bits of entropy
 	const bytes = new Uint8Array(24);
 	crypto.getRandomValues(bytes);
-	
+
 	// Convert to base64url for URL-safe token
 	return btoa(String.fromCharCode(...bytes))
 		.replace(/\+/g, '-')
@@ -39,7 +39,7 @@ export function generateSessionToken(): string {
 export async function createSession(token: string, userId: string): Promise<Session> {
 	const now = new Date();
 	const expiresAt = new Date(now.getTime() + SESSION_EXPIRES_IN_SECONDS * 1000);
-	
+
 	const session = await prisma.session.create({
 		data: {
 			id: token,
@@ -47,8 +47,15 @@ export async function createSession(token: string, userId: string): Promise<Sess
 			expiresAt,
 		},
 	});
-	
+
 	return session;
+}
+
+/**
+ * Verify a session token (alias for validateSessionToken for WebSocket auth)
+ */
+export async function verifySessionToken(token: string): Promise<SessionWithUser | null> {
+	return validateSessionToken(token);
 }
 
 /**
@@ -155,7 +162,7 @@ export function getSessionToken(event: H3Event): string | null {
  */
 export async function getCurrentSession(token: string | null): Promise<SessionWithUser | null> {
 	if (!token) return null;
-	
+
 	return validateSessionToken(token);
 }
 
