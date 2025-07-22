@@ -113,4 +113,32 @@ export default {
     isProduction: process.env.NODE_ENV === 'production',
     isTest: process.env.NODE_ENV === 'test',
   },
+
+  // Telemetry Configuration
+  telemetry: {
+    enabled: process.env.TELEMETRY_ENABLED === 'true' || false,
+    serviceName: process.env.TELEMETRY_SERVICE_NAME || 'pothos-todo-api',
+    serviceVersion: process.env.TELEMETRY_SERVICE_VERSION || '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    exporterUrl: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    exporterHeaders: process.env.OTEL_EXPORTER_OTLP_HEADERS 
+      ? JSON.parse(process.env.OTEL_EXPORTER_OTLP_HEADERS) 
+      : undefined,
+    samplingRate: process.env.TELEMETRY_SAMPLING_RATE 
+      ? parseFloat(process.env.TELEMETRY_SAMPLING_RATE) 
+      : 1.0,
+  },
+
+  // Cache Configuration
+  cache: {
+    enabled: process.env.CACHE_ENABLED !== 'false',
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD || undefined,
+      db: parseInt(process.env.REDIS_DB || '0'),
+      keyPrefix: process.env.REDIS_KEY_PREFIX || 'pothos:',
+      ttl: parseInt(process.env.CACHE_DEFAULT_TTL || '3600'), // 1 hour default
+    },
+  },
 };

@@ -9,6 +9,7 @@ import { CreateTodoHandler } from '../../application/handlers/CreateTodoHandler.
 import { UpdateTodoHandler } from '../../application/handlers/UpdateTodoHandler.js';
 import { CompleteTodoHandler } from '../../application/handlers/CompleteTodoHandler.js';
 import { DeleteTodoHandler } from '../../application/handlers/DeleteTodoHandler.js';
+import { CacheManager } from '../cache/CacheManager.js';
 
 export class Container {
   private static instance: Container;
@@ -20,6 +21,7 @@ export class Container {
   private readonly _eventStore: PrismaEventStore;
   private readonly _eventPublisher: InMemoryEventPublisher;
   private readonly _eventHandlerRegistry: EventHandlerRegistry;
+  private readonly _cacheManager: CacheManager;
   
   private readonly _createTodoHandler: CreateTodoHandler;
   private readonly _updateTodoHandler: UpdateTodoHandler;
@@ -36,6 +38,7 @@ export class Container {
     this._eventStore = new PrismaEventStore(this._prisma);
     this._eventPublisher = new InMemoryEventPublisher(this._eventStore);
     this._eventHandlerRegistry = new EventHandlerRegistry(this._eventPublisher);
+    this._cacheManager = CacheManager.getInstance();
     
     this._createTodoHandler = new CreateTodoHandler(this._todoRepository, this._eventPublisher);
     this._updateTodoHandler = new UpdateTodoHandler(this._todoRepository, this._eventPublisher);
@@ -72,6 +75,10 @@ export class Container {
 
   get eventPublisher(): InMemoryEventPublisher {
     return this._eventPublisher;
+  }
+
+  get cacheManager(): CacheManager {
+    return this._cacheManager;
   }
 
   get createTodoHandler(): CreateTodoHandler {

@@ -5,6 +5,8 @@ import {
   loadAppConfig,
   getServerConfig,
   getSessionConfig,
+  getTelemetryConfig,
+  getCacheConfig,
 } from "./src/config/index.js";
 import {
   handleGoogleLogin,
@@ -15,6 +17,8 @@ import {
   handleLogoutAll,
 } from "./src/routes/auth/index.js";
 import { createServer } from "node:http";
+import { initializeTelemetry, shutdownTelemetry } from "./src/infrastructure/telemetry/telemetry.js";
+import { CacheManager } from "./src/infrastructure/cache/CacheManager.js";
 
 async function startServer() {
   try {
@@ -22,6 +26,21 @@ async function startServer() {
     await loadAppConfig();
     const serverConfig = getServerConfig();
     const sessionConfig = getSessionConfig();
+    const telemetryConfig = getTelemetryConfig();
+    const cacheConfig = getCacheConfig();
+
+    // Initialize telemetry if enabled
+    if (telemetryConfig.enabled) {
+      initializeTelemetry();
+      logger.info("OpenTelemetry initialized");
+    }
+
+    // Initialize cache manager if enabled
+    if (cacheConfig.enabled) {
+      const cacheManager = CacheManager.getInstance();
+      await cacheManager.connect();
+      logger.info("Cache manager initialized");
+    }
 
     // Create H3 app
     const app = createApp();
@@ -134,21 +153,39 @@ async function startServer() {
     });
 
     // Graceful shutdown
-    process.on("SIGTERM", () => {
-      logger.info("Received SIGTERM, shutting down gracefully");
-      server.close(() => {
-        logger.info("Server closed");
+    const gracefulShutdown = async (signal: string) => {
+      logger.info(`Received ${signal}, shutting down gracefully`);
+      
+      server.close(async () => {
+        logger.info("HTTP server closed");
+        
+        // Shutdown cache manager
+        if (cacheConfig.enabled) {
+          const cacheManager = CacheManager.getInstance();
+          await cacheManager.disconnect();
+          logger.info("Cache manager shutdown complete");
+        }
+        
+        // Shutdown telemetry
+        if (telemetryConfig.enabled) {
+          await shutdownTelemetry();
+          logger.info("Telemetry shutdown complete");
+        }
+        
+        // Add any other cleanup here
+        logger.info("Graceful shutdown complete");
         process.exit(0);
       });
-    });
+      
+      // Force shutdown after 10 seconds
+      setTimeout(() => {
+        logger.error("Forced shutdown due to timeout");
+        process.exit(1);
+      }, 10000);
+    };
 
-    process.on("SIGINT", () => {
-      logger.info("Received SIGINT, shutting down gracefully");
-      server.close(() => {
-        logger.info("Server closed");
-        process.exit(0);
-      });
-    });
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
     return server;
   } catch (error) {

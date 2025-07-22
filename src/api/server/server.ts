@@ -3,6 +3,7 @@ import { schema } from "../schema/schema.js";
 import { Container } from "../../infrastructure/container/Container.js";
 import { logger } from "../../logger.js";
 import { createH3GraphQLContext } from "../../middleware/auth.js";
+import { initContextCache } from '@pothos/core';
 import type { Context } from "../schema/builder.js";
 import type { H3Event } from "h3";
 
@@ -17,11 +18,13 @@ export function createYogaWithH3Context() {
   return createYoga<YogaContext, Context>({
     schema,
     context: async ({ h3Event }) => {
+      const contextCache = initContextCache();
       return {
-        user: null,
-        session: null,
+        ...contextCache,
         container,
         h3Event: h3Event,
+        user: null,
+        session: null,
       };
     },
     graphqlEndpoint: "/graphql",

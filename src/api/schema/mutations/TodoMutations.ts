@@ -58,6 +58,9 @@ export const TodoMutations = builder.mutationFields((t) => {
 
       await context.container.createTodoHandler.handle(command);
 
+      // Invalidate todos cache after creation
+      await context.container.cacheManager.invalidateByTags(['todos']);
+
       return await prisma.todo.findUnique({
         ...query,
         where: { id: todoId },
@@ -94,6 +97,9 @@ export const TodoMutations = builder.mutationFields((t) => {
         where: { id: args.id },
         data: updateData,
       });
+
+      // Invalidate todos cache after update
+      await context.container.cacheManager.invalidateByTags(['todos']);
 
       return todo;
     },

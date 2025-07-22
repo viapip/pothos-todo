@@ -1,4 +1,5 @@
 import { builder } from '../builder.js';
+import prisma from '@/lib/prisma';
 
 // Input types for authentication
 export const RegisterUserInput = builder.inputType('RegisterUserInput', {
@@ -74,19 +75,27 @@ export const ChangePasswordInput = builder.inputType('ChangePasswordInput', {
 });
 
 // Output types
-export const AuthPayload = builder.objectType('AuthPayload', {
+interface AuthPayloadRoot {
+	userId?: string;
+	message?: string;
+}
+
+export const AuthPayload = builder.objectType('AuthPayload' as any, {
 	fields: (t) => ({
 		user: t.prismaField({
 			type: 'User',
 			nullable: true,
-			resolve: (query, root) => ({ where: { id: root.userId }, ...query }),
+			resolve: async (query, root: AuthPayloadRoot) => {
+				if (!root.userId) return null;
+				return prisma.user.findUnique({ where: { id: root.userId }, ...query });
+			},
 		}),
 		success: t.boolean({
 			resolve: () => true,
 		}),
 		message: t.string({
 			nullable: true,
-			resolve: (root) => root.message || null,
+			resolve: (root: AuthPayloadRoot) => root.message || null,
 		}),
 	}),
 });

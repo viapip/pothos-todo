@@ -321,6 +321,38 @@ export function getEnvironmentConfig() {
 }
 
 /**
+ * Get telemetry configuration
+ */
+export function getTelemetryConfig() {
+  return getConfigValueSafe('telemetry', {
+    enabled: false,
+    serviceName: 'pothos-todo-api',
+    serviceVersion: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    exporterUrl: undefined,
+    exporterHeaders: undefined,
+    samplingRate: 1.0,
+  });
+}
+
+/**
+ * Get cache configuration
+ */
+export function getCacheConfig() {
+  return getConfigValueSafe('cache', {
+    enabled: true,
+    redis: {
+      host: 'localhost',
+      port: 6379,
+      password: undefined,
+      db: 0,
+      keyPrefix: 'pothos:',
+      ttl: 3600,
+    },
+  });
+}
+
+/**
  * Check if running in development mode
  */
 export function isDevelopment(): boolean {

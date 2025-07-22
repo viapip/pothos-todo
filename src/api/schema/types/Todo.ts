@@ -2,6 +2,7 @@ import { builder } from '../builder.js';
 import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';
 import prisma from '@/lib/prisma';
 import * as TodoCrud from '@/graphql/__generated__/Todo';
+import { CacheManager } from '@/infrastructure/cache/CacheManager';
 
 
 export const TodoType = builder.prismaNode('Todo', {
@@ -35,10 +36,23 @@ export const TodoQueries = builder.queryFields((t) => {
     findMany: t.prismaField({
       ...findMany,
       args: {...findMany.args, customArg: t.arg({ type: 'String', required: false })},
-      resolve: (query, root, args, context, info) => {
+      resolve: async (query, root, args, context, info) => {
         const { customArg } = args;
         console.log(customArg);
-        return findMany.resolve(query, root, args, context, info);
+        
+        // Create cache key based on query arguments
+        const cacheKey = CacheManager.createKey(
+          'todos',
+          'findMany',
+          JSON.stringify(args)
+        );
+        
+        // Use cache with getOrSet pattern
+        return await context.container.cacheManager.getOrSet(
+          cacheKey,
+          async () => findMany.resolve(query, root, args, context, info),
+          { ttl: 300, tags: ['todos'] } // 5 minutes TTL
+        );
       },
     }),
     findUnique: t.prismaField({

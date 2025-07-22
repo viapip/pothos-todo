@@ -1,6 +1,7 @@
 import { getCurrentSessionFromEventH3, type SessionWithUser } from '@/lib/auth';
 import type { Context } from '@/api/schema/builder';
 import type { H3Event } from 'h3';
+import { User } from '@/domain/aggregates/User';
 
 /**
  * Authentication middleware for GraphQL Yoga using H3 useSession
@@ -19,8 +20,17 @@ export async function authMiddleware(event: H3Event): Promise<Partial<Context>> 
 			};
 		}
 		
+		// Convert Prisma user to domain User aggregate
+		const domainUser = new User(
+			sessionData.user.id,
+			sessionData.user.email,
+			sessionData.user.name,
+			sessionData.user.createdAt,
+			sessionData.user.updatedAt
+		);
+		
 		return {
-			user: sessionData.user,
+			user: domainUser,
 			session: sessionData,
 		};
 	} catch (error) {

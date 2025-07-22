@@ -4,40 +4,98 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Pothos GraphQL Federation project using Bun as the JavaScript runtime and H3 as the HTTP framework. The project includes authentication, session management, and GraphQL API.
+This is a Pothos GraphQL Federation project built with Domain-Driven Design (DDD) architecture and CQRS pattern. It uses Bun as the JavaScript runtime, H3 as the HTTP framework, and provides comprehensive authentication with OAuth support.
 
 ## Development Commands
 
-### Install Dependencies
+### Essential Commands
 ```bash
+# Install dependencies
 bun install
-```
 
-### Run the Application
-```bash
+# Start development server (with watch mode)
+bun run dev
+
+# Start production server
 bun run start
-```
 
-### Type Checking
-```bash
+# Type checking
 bun run check:types
+
+# Build project
+bun run build
 ```
 
 ### Database Commands
 ```bash
-bun run db:up          # Start PostgreSQL container
-bun run db:migrate     # Run Prisma migrations
-bun run db:generate    # Generate Prisma client
+# Start PostgreSQL container
+bun run db:up
+
+# Run Prisma migrations
+bun run db:migrate
+
+# Generate Prisma client (required after schema changes)
+bun run db:generate
+
+# Open Prisma Studio (database GUI)
+bun run db:studio
+
+# Reset database (caution: deletes all data)
+bun run db:reset
+
+# Seed database with initial data
+bun run db:seed
 ```
 
-## Project Structure
+### Service Management
+```bash
+# Start all Docker services
+bun run services:up
 
-- `index.ts` - Main server entry point (H3-based)
-- `src/api/server/server.ts` - GraphQL Yoga server configuration  
-- `src/routes/auth/` - Authentication routes (Google, GitHub OAuth)
-- `src/config/` - Configuration management (c12-based)
-- `config/` - Environment-specific config files
-- `src/lib/auth/` - Authentication utilities and session management
+# Stop all Docker services
+bun run services:down
+```
+
+### CLI Commands
+The project includes a custom CLI accessible via:
+```bash
+bun run cli <command>
+```
+
+## Architecture Overview
+
+### Domain-Driven Design Structure
+
+The codebase follows DDD principles with clear separation of concerns:
+
+1. **Domain Layer** (`src/domain/`)
+   - **Aggregates**: User, Todo, TodoList - core business entities with business logic
+   - **Events**: Domain events for state changes (UserCreated, TodoCreated, etc.)
+   - **Value Objects**: Priority, TodoStatus, UserId - immutable domain concepts
+   - **Repositories**: Interfaces defining data access contracts
+
+2. **Application Layer** (`src/application/`)
+   - **Commands**: Command objects representing user intentions
+   - **Handlers**: Command handlers implementing business use cases
+   - Uses CQRS pattern - commands for writes, direct queries for reads
+
+3. **Infrastructure Layer** (`src/infrastructure/`)
+   - **Persistence**: Prisma-based repository implementations
+   - **Container**: Dependency injection setup
+   - **Events**: Event publishing and handling infrastructure
+
+4. **API Layer** (`src/api/`)
+   - **GraphQL Schema**: Pothos-based type-safe schema definitions
+   - **Mutations**: GraphQL mutations mapped to application commands
+   - **Queries**: GraphQL queries for data retrieval
+   - **Server**: GraphQL Yoga server configuration
+
+### Key Architectural Decisions
+
+- **Event Sourcing**: All domain changes emit events stored in DomainEvent table
+- **Repository Pattern**: Domain logic isolated from persistence details
+- **Dependency Injection**: IoC container manages dependencies
+- **Type Safety**: End-to-end type safety from database to GraphQL API
 
 ## Configuration System
 
@@ -45,77 +103,138 @@ The project uses **c12** for configuration management with environment-specific 
 
 - `config/base.config.ts` - Base configuration
 - `config/development.config.ts` - Development overrides
-- `config/production.config.ts` - Production overrides  
+- `config/production.config.ts` - Production overrides
 - `config/test.config.ts` - Test overrides
 
-### Environment Variables
-Configuration uses `.env` files and environment variables:
-- Copy `.env.example` to `.env` for local development
-- All environment variables are centralized through config files
-- **Never access `process.env` directly** - use config functions instead
-
-## Technology Stack
-
-- **Runtime**: Bun v1.2.15+
-- **HTTP Framework**: H3 v1.15.3 (Universal HTTP server)
-- **Language**: TypeScript 5+
-- **GraphQL**: GraphQL Yoga + Pothos schema builder
-- **Database**: PostgreSQL + Prisma ORM
-- **Authentication**: Lucia + Arctic (OAuth providers)
-- **Session Management**: H3 sessions with encryption
-- **Configuration**: c12 (unified config system)
-
-## Server Architecture
-
-The server uses **H3** as the HTTP framework with the following structure:
-
-1. **H3 Application** (`createApp()`)
-2. **Global Middleware**:
-   - Request logging
-   - Session management (for auth routes)
-3. **Auth Routes** (`/auth/*`):
-   - Google OAuth (`/auth/google`, `/auth/google/callback`)  
-   - GitHub OAuth (`/auth/github`, `/auth/github/callback`)
-   - Logout (`/auth/logout`, `/auth/logout/all`)
-4. **GraphQL Endpoint** (`/graphql`):
-   - GraphQL Yoga integration
-   - Prisma-based resolvers
-
-## Authentication System
-
-- **OAuth Providers**: Google, GitHub
-- **Session Management**: H3 sessions with secure cookies
-- **User Management**: Prisma-based user accounts with provider linking
-- **Security**: CSRF protection, PKCE (Google), secure cookies
-
-## Configuration Usage
-
-Always use configuration functions instead of direct environment access:
-
+### Configuration Usage
 ```typescript
 import { getServerConfig, getSessionConfig, getDatabaseConfig } from './src/config/index.js';
 
 // ✅ Correct - use config functions
 const serverConfig = getServerConfig();
-const sessionConfig = getSessionConfig();
 
 // ❌ Wrong - never access process.env directly
 const port = process.env.PORT; // Don't do this
 ```
 
-## Notes
+## Authentication System
 
-- Server runs on port 4000 by default (configurable via config)
-- GraphQL Playground available at `http://localhost:4000/graphql`
-- Authentication endpoints available under `/auth/*`
-- All configuration is centralized and environment-aware
+### OAuth Providers
+- Google OAuth with PKCE support
+- GitHub OAuth
+- Routes: `/auth/google`, `/auth/github`, and respective callbacks
+
+### Session Management
+- H3 sessions with encrypted cookies
+- Lucia for auth state management
+- Secure session storage in database
+
+### User Management
+- Email/password authentication with bcrypt
+- Provider account linking
+- Session-based authentication for GraphQL
+
+## GraphQL Development
+
+### Schema Development
+1. Define domain models in `prisma/schema.prisma`
+2. Run `bun run db:generate` to update Prisma client
+3. Create/update GraphQL types in `src/api/schema/types/`
+4. Add mutations in `src/api/schema/mutations/`
+5. Add queries in `src/api/schema/queries/`
+
+### Pothos Builder Configuration
+The schema builder in `src/api/schema/builder.ts` includes plugins:
+- Prisma integration for automatic type generation
+- DataLoader for N+1 query optimization
+- Error handling with typed errors
+- Relay-style connections and nodes
+- Apollo Federation support
+
+### GraphQL Endpoint
+- Development: `http://localhost:4000/graphql`
+- GraphQL Playground available in development mode
+
+## Database Management
+
+### Prisma Workflow
+1. Modify schema in `prisma/schema.prisma`
+2. Create migration: `bun run db:migrate`
+3. Generate types: `bun run db:generate`
+4. Update GraphQL schema accordingly
+
+### Event Sourcing
+All domain mutations emit events stored in the DomainEvent table:
+- Automatic event capture via domain aggregates
+- Event replay capabilities
+- Audit trail for all changes
+
+## Development Guidelines
+
+### Adding New Features
+1. Start with domain model (aggregate, value objects)
+2. Define repository interface in domain layer
+3. Implement repository in infrastructure layer
+4. Create command and handler in application layer
+5. Expose via GraphQL mutation/query in API layer
+
+### Code Organization
+- Keep domain logic in aggregates, not in GraphQL resolvers
+- Use commands for all state-changing operations
+- Repository implementations should only handle data access
+- GraphQL layer should be thin, delegating to application layer
+
+### Type Safety
+- Leverage Pothos for GraphQL type generation
+- Use Prisma's generated types for database operations
+- Define explicit types for all command/query parameters
+- Avoid `any` types - use proper generics instead
+
+## Environment Setup
+
+1. Copy `.env.example` to `.env`
+2. Configure OAuth credentials (Google, GitHub)
+3. Set session encryption key
+4. Run `bun run db:up` to start PostgreSQL
+5. Run `bun run db:migrate` to initialize database
+6. Run `bun run dev` to start development server
+
+## Common Tasks
+
+### Running a Single Test
+Currently no test infrastructure is set up, but when added:
+```bash
+bun test path/to/test.spec.ts
+```
+
+### Debugging GraphQL Queries
+1. Open GraphQL Playground at `http://localhost:4000/graphql`
+2. Use introspection to explore schema
+3. Check server logs for resolver execution
+4. Enable Prisma query logging in development config
+
+### Adding a New Domain Entity
+1. Define Prisma model in schema
+2. Create aggregate class in `src/domain/aggregates/`
+3. Define repository interface in `src/domain/repositories/`
+4. Implement repository in `src/infrastructure/persistence/`
+5. Register in dependency injection container
+6. Create GraphQL types and resolvers
 
 ## Documentation
 
-- Если необходима документация по пакетам, то сначала смотреть в папку docs/
+Detailed documentation available in `docs/` directory covering:
+- Authentication implementation details
+- CLI usage and custom commands
+- Configuration management
+- Pothos plugin documentation
+- OAuth flow implementation
+- Build process with tsdown
 
-## Environment Variable Management
+## Notes
 
-- **Important Guidelines**:
-  - не использовать process.env в проекте, кроме конфигурации
-  - Все получения переменных окружения только через конфигурацию
+- Server runs on port 4000 by default (configurable)
+- Hot reload enabled in development mode
+- GraphQL code generation runs automatically via Pothos
+- All async operations use Bun's optimized runtime
+- Federation support allows microservice architecture
