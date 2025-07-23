@@ -66,7 +66,7 @@ const createGraphQLHandler = (peer: GraphQLPeer) => {
       logger.info('GraphQL subscription started', {
         peerId: peer.id,
         userId: peer.userId,
-        operationName: typeof msg === 'object' && msg && 'payload' in msg ? (msg.payload as any)?.operationName : undefined,
+        operationName: (msg as any)?.payload?.operationName,
       });
     },
 

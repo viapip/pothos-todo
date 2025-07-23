@@ -186,7 +186,7 @@ export class PerformanceMonitor extends EventEmitter {
     if (errorRate > 0.05) { // 5% error rate
       anomalies.push({
         type: 'high_error_rate',
-        severity: errorRate > 0.1 ? 'high' : 'medium',
+        severity: (errorRate > 0.1 ? 'high' : 'medium') as 'low' | 'medium' | 'high',
         message: `Error rate is ${(errorRate * 100).toFixed(2)}%`,
         value: errorRate,
         threshold: 0.05,
@@ -197,7 +197,7 @@ export class PerformanceMonitor extends EventEmitter {
     if (metrics.p95ResponseTime > 2000) { // 2 seconds
       anomalies.push({
         type: 'slow_response_time',
-        severity: metrics.p95ResponseTime > 5000 ? 'high' : 'medium',
+        severity: (metrics.p95ResponseTime > 5000 ? 'high' : 'medium') as 'low' | 'medium' | 'high',
         message: `95th percentile response time is ${metrics.p95ResponseTime}ms`,
         value: metrics.p95ResponseTime,
         threshold: 2000,
@@ -208,7 +208,7 @@ export class PerformanceMonitor extends EventEmitter {
     if (metrics.cacheHitRate < 0.7) { // 70% hit rate
       anomalies.push({
         type: 'low_cache_hit_rate',
-        severity: metrics.cacheHitRate < 0.5 ? 'medium' : 'low',
+        severity: (metrics.cacheHitRate < 0.5 ? 'medium' : 'low') as 'low' | 'medium' | 'high',
         message: `Cache hit rate is ${(metrics.cacheHitRate * 100).toFixed(2)}%`,
         value: metrics.cacheHitRate,
         threshold: 0.7,
@@ -219,7 +219,7 @@ export class PerformanceMonitor extends EventEmitter {
     if (metrics.slowQueries.length > 10) {
       anomalies.push({
         type: 'many_slow_queries',
-        severity: metrics.slowQueries.length > 20 ? 'high' : 'medium',
+        severity: (metrics.slowQueries.length > 20 ? 'high' : 'medium') as 'low' | 'medium' | 'high',
         message: `${metrics.slowQueries.length} slow queries detected`,
         value: metrics.slowQueries.length,
         threshold: 10,
@@ -297,7 +297,7 @@ export class PerformanceMonitor extends EventEmitter {
     if (values.length === 0) return 0;
     const sorted = [...values].sort((a, b) => a - b);
     const index = Math.ceil((percentile / 100) * sorted.length) - 1;
-    return sorted[index];
+    return sorted[index] || 0;
   }
 
   private async getMetricValue(name: string): Promise<number> {

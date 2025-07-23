@@ -3,7 +3,7 @@ import { Container } from '@/infrastructure/container/Container.js';
 import { CreateTodoCommand } from '@/application/commands/CreateTodoCommand.js';
 import { performanceMonitor } from '@/infrastructure/telemetry/PerformanceMonitor.js';
 import prisma from '@/lib/prisma.js';
-import { Priority } from '@/domain/value-objects/Priority.js';
+import { Priority as PrismaPriority } from '@prisma/client';
 
 /**
  * Trace-based performance tests for Todo operations
@@ -31,11 +31,10 @@ export const todoPerformanceTests = traceBasedTesting.createSuite('Todo Performa
     const command = CreateTodoCommand.create(
       crypto.randomUUID(),
       'Performance test todo',
-      'Testing trace-based performance',
       'test-user-id',
       undefined,
-      Priority.medium,
-      undefined
+      PrismaPriority.MEDIUM,
+      new Date()
     );
 
     await handler.handle(command);
@@ -53,11 +52,10 @@ export const todoPerformanceTests = traceBasedTesting.createSuite('Todo Performa
         CreateTodoCommand.create(
           crypto.randomUUID(),
           `Bulk test todo ${i}`,
-          undefined,
           'test-user-id',
           undefined,
-          Priority.low,
-          undefined
+          PrismaPriority.LOW,
+          new Date()
         )
       )
     );
@@ -130,11 +128,10 @@ export async function runTodoBenchmarks() {
         CreateTodoCommand.create(
           crypto.randomUUID(),
           'Benchmark todo',
-          undefined,
           'test-user-id',
           undefined,
-          Priority.medium,
-          undefined
+          PrismaPriority.MEDIUM,
+          new Date()
         )
       );
     }

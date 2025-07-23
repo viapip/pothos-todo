@@ -199,6 +199,110 @@ All domain mutations emit events stored in the DomainEvent table:
 - Audit trail for all changes
 - Real-time subscriptions based on events
 
+## UnJS Ecosystem Integration
+
+The project extensively leverages the UnJS ecosystem for maximum performance and developer experience. This comprehensive integration includes:
+
+### Core UnJS Utilities (`src/lib/unjs-utils.ts`)
+
+**HTTP Operations**: 
+- `ofetch`/`$fetch` for optimized HTTP requests with retry and caching
+- Built-in request/response transformation and validation
+
+**Path & URL Utilities**:
+- `pathe` for cross-platform path operations
+- `ufo` for URL parsing, manipulation, and query handling
+
+**Data Processing**:
+- `ohash` for consistent hashing and `scule` for deep object operations
+- `destr` for safe JSON parsing and serialization
+- `defu` for intelligent deep merging
+
+**Storage & Caching**:
+- `unstorage` for unified storage abstraction across backends
+- Redis, file system, and memory drivers
+
+**Development Tools**:
+- `consola` for enhanced logging with multiple formats
+- `std-env` for reliable environment detection
+
+### File System Service (`src/infrastructure/filesystem/UnJSFileSystem.ts`)
+
+- **Unified Storage**: `unstorage` with multiple driver support
+- **Dynamic Imports**: `jiti` for runtime TypeScript module loading
+- **Archive Operations**: `nanotar` for tar file handling
+- **Real-time Monitoring**: File watching with automatic change detection
+- **Pattern Matching**: Advanced glob patterns for file discovery
+- **Type-aware Processing**: Automatic parsing based on file extensions
+
+### Enhanced Validation (`src/infrastructure/validation/UnJSValidation.ts`)
+
+- **Schema Generation**: `untyped` for TypeScript-to-schema conversion
+- **H3 Integration**: Built-in middleware for request validation
+- **Multi-format Export**: JSON Schema and TypeScript interface generation
+- **Batch Validation**: Concurrent validation with detailed reporting
+- **Custom Validators**: Extensible validation rules and transformations
+
+### Configuration Management (`src/config/unjs-config.ts`)
+
+- **Multi-source Loading**: `unconfig` with priority-based merging
+- **Live Reloading**: Automatic configuration updates on file changes
+- **Environment Awareness**: Context-sensitive configuration loading
+- **Validation**: Built-in schema validation with detailed error messages
+- **Hierarchical Merging**: Intelligent deep merging with `defu`
+
+### HTTP Client System (`src/infrastructure/http/UnJSHttpClient.ts`)
+
+- **Advanced Caching**: Intelligent cache management with TTL
+- **Request Retrying**: Configurable retry strategies with backoff
+- **Performance Metrics**: Request timing, cache hit rates, error tracking
+- **GraphQL Support**: Dedicated GraphQL query execution
+- **File Operations**: Upload/download with progress tracking
+- **Batch Processing**: Concurrent request execution
+
+### CLI Framework (`src/infrastructure/cli/UnJSCLI.ts`)
+
+- **Modern Interface**: `citty` for rich CLI with auto-completion
+- **Interactive Help**: Contextual help with examples and usage
+- **Plugin Architecture**: Extensible command system
+- **Shell Integration**: Bash completion generation
+- **Documentation**: Automatic Markdown docs from command definitions
+
+### WebSocket Server (`src/infrastructure/websocket/UnJSWebSocket.ts`)
+
+- **High Performance**: `unws` for optimized WebSocket handling
+- **Room Management**: Advanced room system with authentication
+- **Message Validation**: Integrated validation for all message types
+- **Rate Limiting**: Per-client rate limiting with sliding windows
+- **Real-time Features**: Chat, notifications, live collaboration
+
+### Routing System (`src/infrastructure/router/UnJSRouter.ts`)
+
+- **Dual Routing**: H3 router + `unrouter` for maximum flexibility
+- **Middleware Chain**: Ordered middleware execution with context passing
+- **Auto-validation**: Request/response validation integration
+- **Route Caching**: Built-in caching with TTL and key generation
+- **REST Resources**: Automatic CRUD endpoint generation
+- **OpenAPI Generation**: Automatic API documentation
+
+### Development Server (`src/infrastructure/server/UnJSDevServer.ts`)
+
+- **Hot Reload**: `listhen` for advanced development features
+- **File Watching**: Automatic restart on source changes
+- **Dev Tools**: Built-in metrics, health checks, and debugging endpoints
+- **Performance Monitoring**: Real-time server statistics
+- **Live Configuration**: Configuration reloading without restart
+
+### UnJS Package Utilization
+
+The project uses **22+ UnJS packages** including:
+- `citty`, `consola`, `defu`, `destr`, `dotenv`, `execa`
+- `jiti`, `listhen`, `magicast`, `mlly`, `nanoid`, `nanotar`
+- `node-fetch-native`, `nypm`, `ofetch`, `ohash`, `pathe`
+- `pkg-types`, `scule`, `serve-placeholder`, `std-env`
+- `ufo`, `unbuild`, `unconfig`, `uncrypto`, `unenv`
+- `unhead`, `unimport`, `unrouter`, `unstorage`, `untyped`, `unws`
+
 ## AI and Vector Search Features
 
 ### Infrastructure Components

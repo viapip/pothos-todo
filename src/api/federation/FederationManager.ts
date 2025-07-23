@@ -365,7 +365,7 @@ export class FederationManager {
       this.metrics.recordMetric('federation.health_check', 1, {
         serviceName,
         status: health.status,
-        latency,
+        latency: latency.toString(),
       });
 
     } catch (error) {
