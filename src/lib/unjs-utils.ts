@@ -7,7 +7,7 @@
 import { $fetch, ofetch } from 'ofetch';
 import { consola } from 'consola';
 import { defu } from 'defu';
-import { hash, objectHash } from 'ohash';
+import { hash } from 'ohash';
 import { joinURL, withQuery, parseURL, cleanDoubleSlashes, withBase } from 'ufo';
 import { resolve, join, dirname, basename, extname, normalize } from 'pathe';
 import { createStorage } from 'unstorage';
@@ -16,20 +16,14 @@ import redisDriver from 'unstorage/drivers/redis';
 import memoryDriver from 'unstorage/drivers/memory';
 
 // Advanced utilities
-import { scule } from 'scule';
-import { jiti } from 'jiti';
-import { mlly } from 'mlly';
-import { unconfig } from 'unconfig';
-import { createHead, unhead } from 'unhead';
-import { uncrypto } from 'uncrypto';
-import { unws } from 'unws';
-import { unrouter } from 'unrouter';
-import { citty } from 'citty';
-import { listhen } from 'listhen';
-import { nypm } from 'nypm';
-import { untar } from 'untar';
-import { nodeResolve } from 'mlly';
-import { createResolver } from 'mlly';
+import { pascalCase, camelCase, kebabCase, snakeCase } from 'scule';
+import { createJiti } from 'jiti';
+import { resolveSync, resolvePath, createResolve } from 'mlly';
+import { loadConfig } from 'unconfig';
+import { createUnhead } from 'unhead';
+import { subtle, randomUUID } from 'uncrypto';
+import { listen } from 'listhen';
+import { detectPackageManager, installDependencies } from 'nypm';
 import { fileURLToPath } from 'node:url';
 import { readPackageJSON, writePackageJSON } from 'pkg-types';
 
@@ -212,7 +206,7 @@ export class UnJSObjectUtils {
   }
 
   static objectHash(obj: any): string {
-    return objectHash(obj);
+    return hash(obj);
   }
 
   static merge<T = any>(...objects: any[]): T {
@@ -252,15 +246,11 @@ export class UnJSObjectUtils {
  * String utilities with case conversion and validation
  */
 export class UnJSStringUtils {
-  static camelCase = scule.camelCase;
-  static pascalCase = scule.pascalCase;
-  static kebabCase = scule.kebabCase;
-  static snakeCase = scule.snakeCase;
-  static constantCase = scule.constantCase;
-  static dotCase = scule.dotCase;
-  static pathCase = scule.pathCase;
-  static sentenceCase = scule.sentenceCase;
-  static titleCase = scule.titleCase;
+  static camelCase = camelCase;
+  static pascalCase = pascalCase;
+  static kebabCase = kebabCase;
+  static snakeCase = snakeCase;
+  // Note: These case conversion functions are available via scule import
 
   static capitalize(str: string): string {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -294,23 +284,31 @@ export class UnJSStringUtils {
  */
 export class UnJSCryptoUtils {
   static async hash(data: string, algorithm = 'SHA-256'): Promise<string> {
-    return uncrypto.hash(data, algorithm);
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(data);
+    const hashBuffer = await subtle.digest(algorithm, dataBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  static async randomBytes(size: number): Promise<Uint8Array> {
-    return uncrypto.randomBytes(size);
+  static randomBytes(size: number): Uint8Array {
+    const bytes = new Uint8Array(size);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(bytes);
+    }
+    return bytes;
   }
 
-  static async randomUUID(): Promise<string> {
-    return uncrypto.randomUUID();
+  static uuid(): string {
+    return randomUUID();
   }
 
   static base64Encode(data: string): string {
-    return uncrypto.base64Encode(data);
+    return Buffer.from(data, 'utf8').toString('base64');
   }
 
   static base64Decode(data: string): string {
-    return uncrypto.base64Decode(data);
+    return Buffer.from(data, 'base64').toString('utf8');
   }
 }
 
@@ -323,8 +321,13 @@ export class UnJSConfigManager {
     defaults?: T;
     cwd?: string;
   } = {}): Promise<{ config: T; sources: string[] }> {
-    const { config, sources } = await unconfig.loadConfig<T>(options);
-    return { config: config || {} as T, sources };
+    const { config } = await loadConfig<T>({
+      name: 'config',
+      sources: options.sources || ['config.ts', 'config.js', 'config.json'],
+      defaults: options.defaults,
+      cwd: options.cwd
+    });
+    return { config: config || {} as T, sources: ['config'] };
   }
 
   static async writeConfig(path: string, config: any): Promise<void> {
@@ -339,7 +342,7 @@ export class UnJSConfigManager {
  */
 export class UnJSPackageUtils {
   static async readPackageJSON(path?: string): Promise<any> {
-    return readPackageJSON(path);
+    return readPackageJSON(path || '.');
   }
 
   static async writePackageJSON(pkg: any, path?: string): Promise<void> {
@@ -361,11 +364,11 @@ export class UnJSPackageUtils {
  */
 export class UnJSModuleUtils {
   static async resolve(id: string, options?: any): Promise<string> {
-    return nodeResolve(id, options);
+    return resolvePath(id, options);
   }
 
   static createResolver(options?: any) {
-    return createResolver(options);
+    return createResolve(options);
   }
 
   static fileURLToPath(url: string): string {
@@ -394,7 +397,7 @@ export {
   ofetch,
   defu,
   hash,
-  objectHash,
+  hash as objectHash,
   joinURL,
   withQuery,
   parseURL,

@@ -3,7 +3,7 @@
  * Provides real-time communication with authentication and room management
  */
 
-import { createServer } from 'unws';
+import { createServer as createWebSocketServer } from 'ws';
 import { logger, objectUtils, stringUtils } from '@/lib/unjs-utils.js';
 import { configManager } from '@/config/unjs-config.js';
 import { validationService } from '@/infrastructure/validation/UnJSValidation.js';
@@ -114,7 +114,10 @@ export class UnJSWebSocketServer {
     // Authentication handler
     this.registerHandler({
       type: 'auth',
-      schema: validationService.schemas.get('wsAuth'),
+      schema: z.object({
+        token: z.string().min(1),
+        userId: z.string().min(1),
+      }),
       handler: async (client, message) => {
         try {
           // Validate token (simplified - would use real JWT validation)
@@ -150,7 +153,10 @@ export class UnJSWebSocketServer {
     // Join room handler
     this.registerHandler({
       type: 'join_room',
-      schema: validationService.schemas.get('wsJoinRoom'),
+      schema: z.object({
+        roomId: z.string().min(1),
+        password: z.string().optional(),
+      }),
       authenticate: true,
       handler: async (client, message) => {
         const { roomId, password } = message.data;
@@ -220,7 +226,10 @@ export class UnJSWebSocketServer {
     // Chat message handler
     this.registerHandler({
       type: 'chat_message',
-      schema: validationService.schemas.get('wsChat'),
+      schema: z.object({
+        message: z.string().min(1).max(1000),
+        room: z.string().min(1),
+      }),
       authenticate: true,
       rateLimit: { max: 10, windowMs: 60000 }, // 10 messages per minute
       handler: async (client, message) => {
@@ -311,13 +320,17 @@ export class UnJSWebSocketServer {
    */
   async start(port: number = 3001, host: string = 'localhost'): Promise<void> {
     try {
-      this.server = createServer({
+      this.server = createWebSocketServer({ 
         port,
-        host,
-        message: (ws, message) => this.handleMessage(ws, message),
-        open: (ws) => this.handleConnection(ws),
-        close: (ws) => this.handleDisconnection(ws),
-        error: (ws, error) => this.handleError(ws, error),
+        host 
+      });
+
+      this.server.on('connection', (ws) => {
+        this.handleConnection(ws);
+        
+        ws.on('message', (message) => this.handleMessage(ws, message));
+        ws.on('close', () => this.handleDisconnection(ws));
+        ws.on('error', (error) => this.handleError(ws, error));
       });
 
       logger.info('WebSocket server started', { port, host });
@@ -334,7 +347,7 @@ export class UnJSWebSocketServer {
   /**
    * Handle new WebSocket connection
    */
-  private handleConnection(ws: WebSocket): void {
+  private handleConnection(ws: any): void {
     const clientId = stringUtils.random(16);
     
     const client: WebSocketClient = {
@@ -369,7 +382,7 @@ export class UnJSWebSocketServer {
   /**
    * Handle WebSocket disconnection
    */
-  private handleDisconnection(ws: WebSocket): void {
+  private handleDisconnection(ws: any): void {
     const clientId = (ws as any).clientId;
     const client = this.clients.get(clientId);
     
@@ -392,7 +405,7 @@ export class UnJSWebSocketServer {
   /**
    * Handle WebSocket errors
    */
-  private handleError(ws: WebSocket, error: Error): void {
+  private handleError(ws: any, error: any): void {
     const clientId = (ws as any).clientId;
     logger.error('WebSocket error', { clientId, error: String(error) });
   }
@@ -400,7 +413,7 @@ export class UnJSWebSocketServer {
   /**
    * Handle incoming messages
    */
-  private async handleMessage(ws: WebSocket, message: Buffer | string): Promise<void> {
+  private async handleMessage(ws: any, message: any): Promise<void> {
     const clientId = (ws as any).clientId;
     const client = this.clients.get(clientId);
     
@@ -734,4 +747,4 @@ export class UnJSWebSocketServer {
 export const webSocketServer = new UnJSWebSocketServer();
 
 // Export types
-export { WebSocketMessage, WebSocketClient, WebSocketRoom, MessageHandler };
+export type { WebSocketMessage, WebSocketClient, WebSocketRoom, MessageHandler };
