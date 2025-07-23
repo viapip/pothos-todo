@@ -71,9 +71,7 @@ builder.mutationFields((t) => ({
 
 	logoutUser: t.field({
 		type: 'Boolean',
-		authScopes: {
-			authenticated: true,
-		},
+		authScopes: { authenticated: true },
 		resolve: async (parent, args, context) => {
 			try {
 				// Clear H3 session
@@ -96,9 +94,7 @@ builder.mutationFields((t) => ({
 			name: t.arg.string({ required: false }),
 			email: t.arg.string({ required: false }),
 		},
-		authScopes: {
-			authenticated: true,
-		},
+		authScopes: { authenticated: true },
 		resolve: async (parent, args, context) => {
 			if (!context.session?.user) {
 				throw new Error('Not authenticated');
@@ -124,9 +120,7 @@ builder.mutationFields((t) => ({
 			currentPassword: t.arg.string({ required: true }),
 			newPassword: t.arg.string({ required: true }),
 		},
-		authScopes: {
-			authenticated: true,
-		},
+		authScopes: { authenticated: true },
 		resolve: async (parent, args, context) => {
 			if (!context.session?.user) {
 				throw new Error('Not authenticated');
@@ -149,9 +143,7 @@ builder.mutationFields((t) => ({
 
 	deleteAccount: t.field({
 		type: 'Boolean',
-		authScopes: {
-			authenticated: true,
-		},
+		authScopes: { authenticated: true },
 		resolve: async (parent, args, context) => {
 			if (!context.session?.user) {
 				throw new Error('Not authenticated');

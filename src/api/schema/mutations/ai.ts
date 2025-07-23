@@ -1,8 +1,8 @@
 import { builder } from '../builder.js';
-import { 
-  TaskAnalysisResult, 
-  UserProductivityReport, 
-  SchedulingSuggestions, 
+import {
+  TaskAnalysisResult,
+  UserProductivityReport,
+  SchedulingSuggestions,
   ChatResponse,
   AnalyzeTodoInput,
   ChatWithAIInput,
@@ -17,9 +17,7 @@ export const aiMutations = builder.mutationFields((t) => ({
     args: {
       input: t.arg({ type: AnalyzeTodoInput, required: true }),
     },
-    authScopes: {
-      authenticated: true,
-    },
+    authScopes: { authenticated: true },
     resolve: async (_, { input }, { session, user }) => {
       if (!session?.user) {
         throw new Error('Authentication required');
@@ -57,9 +55,7 @@ export const aiMutations = builder.mutationFields((t) => ({
     args: {
       input: t.arg({ type: ProductivityReportInput, required: false }),
     },
-    authScopes: {
-      authenticated: true,
-    },
+    authScopes: { authenticated: true },
     resolve: async (_, { input }, { session }) => {
       if (!session?.user) {
         throw new Error('Authentication required');
@@ -74,9 +70,7 @@ export const aiMutations = builder.mutationFields((t) => ({
 
   suggestTaskScheduling: t.field({
     type: SchedulingSuggestions,
-    authScopes: {
-      authenticated: true,
-    },
+    authScopes: { authenticated: true },
     resolve: async (_, __, { session }) => {
       if (!session?.user) {
         throw new Error('Authentication required');
@@ -94,9 +88,7 @@ export const aiMutations = builder.mutationFields((t) => ({
     args: {
       input: t.arg({ type: ChatWithAIInput, required: true }),
     },
-    authScopes: {
-      authenticated: true,
-    },
+    authScopes: { authenticated: true },
     resolve: async (_, { input }, { session }) => {
       if (!session?.user) {
         throw new Error('Authentication required');
@@ -118,9 +110,7 @@ export const aiMutations = builder.mutationFields((t) => ({
     args: {
       openaiApiKey: t.arg.string({ required: false }),
     },
-    authScopes: {
-      admin: true,
-    },
+    authScopes: { admin: true },
     resolve: async (_, { openaiApiKey }) => {
       try {
         const pipeline = aiPipelineService(prisma);

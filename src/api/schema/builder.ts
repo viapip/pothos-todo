@@ -41,12 +41,11 @@ export const builder = new SchemaBuilder<{
   Scalars: {
     DateTime: { Input: Date; Output: Date };
     JSON: { Input: any; Output: any };
+  },
+  AuthScopes: {
+    authenticated: boolean;
+    admin: boolean;
   };
-  // Temporarily removed AuthScopes to disable scopeAuth
-  // AuthScopes: {
-  //   authenticated: boolean;
-  //   admin: boolean;
-  // };
 }>({
   plugins: [
     PrismaPlugin,

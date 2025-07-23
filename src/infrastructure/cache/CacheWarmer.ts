@@ -92,12 +92,12 @@ export class CacheWarmer extends EventEmitter {
   private metrics: MetricsCollector;
   private tracing: DistributedTracing;
   private container: Container;
-  
+
   private strategies: Map<string, CacheWarmingStrategy> = new Map();
   private userPatterns: Map<string, UserBehaviorPattern> = new Map();
   private predictiveModels: Map<string, PredictiveModel> = new Map();
   private activeWarmingTasks: Map<string, NodeJS.Timeout> = new Map();
-  
+
   // Warming statistics
   private warmingMetrics: CacheWarmingMetrics = {
     totalWarmedQueries: 0,
@@ -127,7 +127,7 @@ export class CacheWarmer extends EventEmitter {
     this.metrics = MetricsCollector.getInstance();
     this.tracing = DistributedTracing.getInstance();
     this.container = Container.getInstance();
-    
+
     this.setupDefaultStrategies();
     this.initializePredictiveModels();
     this.startPatternLearning();
@@ -145,11 +145,11 @@ export class CacheWarmer extends EventEmitter {
    */
   public addWarmingStrategy(strategy: CacheWarmingStrategy): void {
     this.strategies.set(strategy.name, strategy);
-    
+
     if (strategy.enabled) {
       this.scheduleStrategy(strategy);
     }
-    
+
     logger.info('Cache warming strategy added', {
       name: strategy.name,
       priority: strategy.priority,
@@ -163,7 +163,7 @@ export class CacheWarmer extends EventEmitter {
   public async startWarming(): Promise<void> {
     try {
       logger.info('Starting intelligent cache warming');
-      
+
       // Execute all enabled strategies
       const enabledStrategies = Array.from(this.strategies.values())
         .filter(strategy => strategy.enabled);
@@ -193,8 +193,10 @@ export class CacheWarmer extends EventEmitter {
    * Perform predictive cache warming based on user behavior
    */
   public async performPredictiveWarming(): Promise<void> {
-    const span = this.tracing.startTrace('predictive_cache_warming');
-    
+    const span = this.tracing && typeof this.tracing.startTrace === 'function'
+      ? this.tracing.startTrace('predictive_cache_warming')
+      : null;
+
     try {
       // Update predictive models
       await this.updatePredictiveModels();
@@ -223,13 +225,17 @@ export class CacheWarmer extends EventEmitter {
 
       await Promise.allSettled(warmingTasks);
 
-      this.tracing.finishSpan(span, 'ok');
+      if (span && this.tracing && typeof this.tracing.finishSpan === 'function') {
+        this.tracing.finishSpan(span, 'ok');
+      }
       logger.info('Predictive cache warming completed', {
         predictions: predictions.length,
       });
 
     } catch (error) {
-      this.tracing.finishSpan(span, 'error', error as Error);
+      if (span && this.tracing && typeof this.tracing.finishSpan === 'function') {
+        this.tracing.finishSpan(span, 'error', error as Error);
+      }
       logger.error('Predictive cache warming failed', error);
     }
   }
@@ -441,7 +447,7 @@ export class CacheWarmer extends EventEmitter {
       const task = setInterval(() => {
         this.executeWarmingStrategy(strategy);
       }, interval);
-      
+
       this.activeWarmingTasks.set(strategy.name, task as any);
     } else if (strategy.schedule.type === 'cron') {
       // For cron scheduling, you'd use a cron library like node-cron
@@ -453,8 +459,9 @@ export class CacheWarmer extends EventEmitter {
   }
 
   private async executeWarmingStrategy(strategy: CacheWarmingStrategy): Promise<void> {
-    const span = this.tracing.startTrace(`warming_strategy_${strategy.name}`);
-    
+    const span = this.tracing && typeof this.tracing.startTrace === 'function'
+      ? this.tracing.startTrace(`warming_strategy_${strategy.name}`)
+      : null;
     try {
       logger.info('Executing warming strategy', { name: strategy.name });
 
@@ -462,11 +469,15 @@ export class CacheWarmer extends EventEmitter {
         await this.executeWarmingTarget(target, strategy.warmingConfig);
       }
 
-      this.tracing.finishSpan(span, 'ok');
+      if (span && this.tracing && typeof this.tracing.finishSpan === 'function') {
+        this.tracing.finishSpan(span, 'ok');
+      }
       this.emit('strategy_executed', { strategy: strategy.name });
 
     } catch (error) {
-      this.tracing.finishSpan(span, 'error', error as Error);
+      if (span && this.tracing && typeof this.tracing.finishSpan === 'function') {
+        this.tracing.finishSpan(span, 'error', error as Error);
+      }
       logger.error('Warming strategy execution failed', error, {
         strategy: strategy.name,
       });
@@ -512,15 +523,15 @@ export class CacheWarmer extends EventEmitter {
   ): Promise<void> {
     // Get active users for user-specific queries
     const activeUsers = await this.getActiveUsers();
-    
+
     const commonQueries = [
-      { 
+      {
         query: 'query GetUserTodos($userId: ID!) { user(id: $userId) { todos { id title status priority } } }',
-        needsUserId: true 
+        needsUserId: true
       },
-      { 
+      {
         query: 'query GetTodoStats { todoStats { total completed pending } }',
-        needsUserId: false 
+        needsUserId: false
       },
     ];
 
@@ -570,7 +581,7 @@ export class CacheWarmer extends EventEmitter {
     config: CacheWarmingStrategy['warmingConfig']
   ): Promise<void> {
     const predictions = await this.generatePredictions();
-    
+
     for (const prediction of predictions) {
       const highConfidenceQueries = prediction.queries
         .filter(q => q.probability > 0.8)
@@ -598,7 +609,7 @@ export class CacheWarmer extends EventEmitter {
     context?: any
   ): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       // Check if already cached - use GraphQL cache manager
       const cached = await this.graphqlCache.getCachedQuery(query, variables, context);
@@ -611,10 +622,10 @@ export class CacheWarmer extends EventEmitter {
 
       // Cache the result
       await this.graphqlCache.cacheQuery(query, variables, result, context);
-      
+
       const duration = Date.now() - startTime;
       this.warmingMetrics.totalWarmedQueries++;
-      this.warmingMetrics.averageWarmingTime = 
+      this.warmingMetrics.averageWarmingTime =
         (this.warmingMetrics.averageWarmingTime + duration) / 2;
 
     } catch (error) {
@@ -640,10 +651,10 @@ export class CacheWarmer extends EventEmitter {
           orderBy: { createdAt: 'desc' },
           take: 20,
         });
-        
+
         return { data: { user: { todos } } };
       }
-      
+
       if (query.includes('todoLists') && userId) {
         const todoLists = await this.container.prisma.todoList.findMany({
           where: { userId },
@@ -655,7 +666,7 @@ export class CacheWarmer extends EventEmitter {
           },
           orderBy: { createdAt: 'desc' },
         });
-        
+
         return { data: { todoLists } };
       }
 
@@ -664,17 +675,17 @@ export class CacheWarmer extends EventEmitter {
           by: ['status'],
           _count: { status: true },
         });
-        
+
         const total = stats.reduce((sum, stat) => sum + stat._count.status, 0);
         const completed = stats.find(s => s.status === 'COMPLETED')?._count.status || 0;
         const pending = total - completed;
-        
+
         return { data: { todoStats: { total, completed, pending } } };
       }
-      
+
       // Default: return empty result
       return { data: {} };
-      
+
     } catch (error) {
       logger.error('Failed to execute GraphQL query for warming', error);
       return { data: {}, errors: [{ message: 'Query execution failed' }] };
@@ -693,7 +704,7 @@ export class CacheWarmer extends EventEmitter {
         take: 100, // Limit to top 100 active users
         orderBy: { lastActiveAt: 'desc' },
       });
-      
+
       return activeUsers.map(user => user.id);
     } catch (error) {
       logger.error('Failed to get active users', error);
@@ -707,7 +718,7 @@ export class CacheWarmer extends EventEmitter {
     variables: Record<string, any>
   ): void {
     let pattern = this.userPatterns.get(userId);
-    
+
     if (!pattern) {
       pattern = {
         userId,
@@ -724,7 +735,7 @@ export class CacheWarmer extends EventEmitter {
     // Find existing query pattern or create new one
     const queryHash = hash({ query, variables });
     let queryPattern = pattern.patterns.find(p => hash({ query: p.query, variables: p.variables }) === queryHash);
-    
+
     if (!queryPattern) {
       queryPattern = {
         query,
@@ -741,10 +752,10 @@ export class CacheWarmer extends EventEmitter {
     // Update pattern
     queryPattern.frequency++;
     queryPattern.lastAccessed = new Date();
-    
+
     const hour = new Date().getHours();
     const dayOfWeek = new Date().getDay();
-    
+
     if (!queryPattern.timeOfDay.includes(hour)) {
       queryPattern.timeOfDay.push(hour);
     }
@@ -759,10 +770,10 @@ export class CacheWarmer extends EventEmitter {
   private updatePredictedNextAccess(queryPattern: UserBehaviorPattern['patterns'][0]): void {
     // Simple prediction based on average frequency
     if (queryPattern.frequency > 1) {
-      const avgInterval = queryPattern.frequency > 0 ? 
-        (24 * 60 * 60 * 1000 / queryPattern.frequency) : 
+      const avgInterval = queryPattern.frequency > 0 ?
+        (24 * 60 * 60 * 1000 / queryPattern.frequency) :
         3600000; // Default 1 hour
-      
+
       queryPattern.predictedNextAccess = new Date(Date.now() + avgInterval);
     }
   }
@@ -776,7 +787,7 @@ export class CacheWarmer extends EventEmitter {
 
   private async generatePredictions(): Promise<PredictiveModel['predictions']> {
     const predictions: PredictiveModel['predictions'] = [];
-    
+
     for (const [userId, pattern] of this.userPatterns.entries()) {
       const userPredictions: PredictiveModel['predictions'][0] = {
         userId,
@@ -787,7 +798,7 @@ export class CacheWarmer extends EventEmitter {
       for (const queryPattern of pattern.patterns) {
         const probability = this.calculateQueryProbability(queryPattern);
         const expectedTime = queryPattern.predictedNextAccess;
-        
+
         if (probability > 0.3) {
           userPredictions.queries.push({
             query: queryPattern.query,
@@ -810,28 +821,28 @@ export class CacheWarmer extends EventEmitter {
     const now = new Date();
     const currentHour = now.getHours();
     const currentDay = now.getDay();
-    
+
     let probability = 0.3; // Base probability
-    
+
     // Increase probability if current time matches historical patterns
     if (queryPattern.timeOfDay.includes(currentHour)) {
       probability += 0.3;
     }
-    
+
     if (queryPattern.dayOfWeek.includes(currentDay)) {
       probability += 0.2;
     }
-    
+
     // Increase probability based on frequency
     const frequencyFactor = Math.min(0.3, queryPattern.frequency / 100);
     probability += frequencyFactor;
-    
+
     // Decrease probability if recently accessed
     const hoursSinceLastAccess = (now.getTime() - queryPattern.lastAccessed.getTime()) / (1000 * 60 * 60);
     if (hoursSinceLastAccess < 1) {
       probability *= 0.5;
     }
-    
+
     return Math.min(1, probability);
   }
 
@@ -840,7 +851,7 @@ export class CacheWarmer extends EventEmitter {
     setInterval(() => {
       this.cleanupOldPatterns();
     }, 24 * 60 * 60 * 1000); // Daily cleanup
-    
+
     // Update predictive models periodically
     setInterval(() => {
       this.updatePredictiveModels();
@@ -849,15 +860,15 @@ export class CacheWarmer extends EventEmitter {
 
   private cleanupOldPatterns(): void {
     const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
-    
+
     for (const [userId, pattern] of this.userPatterns.entries()) {
       pattern.patterns = pattern.patterns.filter(p => p.lastAccessed > cutoffDate);
-      
+
       if (pattern.patterns.length === 0) {
         this.userPatterns.delete(userId);
       }
     }
-    
+
     // Cleanup query access log
     this.queryAccessLog = this.queryAccessLog.filter(log => log.timestamp > cutoffDate);
   }
@@ -867,17 +878,17 @@ export class CacheWarmer extends EventEmitter {
     const beforeHitRate = 0.75; // Would get from cache analytics
     const afterHitRate = 0.85; // Would get from cache analytics
     this.warmingMetrics.cacheHitImprovement = afterHitRate - beforeHitRate;
-    
+
     // Calculate predictive accuracy
     let totalPredictions = 0;
     let correctPredictions = 0;
-    
+
     for (const model of this.predictiveModels.values()) {
       totalPredictions += model.predictions.length;
       correctPredictions += Math.floor(model.predictions.length * model.accuracy);
     }
-    
-    this.warmingMetrics.predictiveAccuracy = totalPredictions > 0 ? 
+
+    this.warmingMetrics.predictiveAccuracy = totalPredictions > 0 ?
       correctPredictions / totalPredictions : 0;
   }
 
@@ -887,12 +898,12 @@ export class CacheWarmer extends EventEmitter {
     hitRateImprovement: number;
   }> {
     const queryFrequencies = new Map<string, number>();
-    
+
     for (const logEntry of this.queryAccessLog) {
       const queryKey = logEntry.query.substring(0, 100); // Truncate for display
       queryFrequencies.set(queryKey, (queryFrequencies.get(queryKey) || 0) + 1);
     }
-    
+
     return Array.from(queryFrequencies.entries())
       .map(([query, frequency]) => ({
         query,
@@ -950,7 +961,7 @@ export const createCacheWarmer = () => {
  */
 export function createCacheWarmerMiddleware() {
   const warmer = CacheWarmer.getInstance();
-  
+
   return {
     requestDidStart() {
       return {
@@ -958,7 +969,7 @@ export function createCacheWarmerMiddleware() {
           if (requestContext.request.query && requestContext.context?.userId) {
             const fromCache = requestContext.response.extensions?.fromCache || false;
             const responseTime = requestContext.metrics?.executionTime || 0;
-            
+
             warmer.logQueryAccess(
               requestContext.context.userId,
               requestContext.request.query,

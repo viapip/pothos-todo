@@ -24,11 +24,11 @@ import { Container } from "./src/infrastructure/container/Container.js";
 import { websocketHandler } from "./src/routes/websocket.js";
 import { graphqlWebSocketHandler } from "./src/routes/graphql-ws.js";
 import { env } from "./src/config/env.validation.js";
-import { 
-  handleHealthCheck, 
-  handleLivenessProbe, 
+import {
+  handleHealthCheck,
+  handleLivenessProbe,
   handleReadinessProbe,
-  handleDetailedHealthCheck 
+  handleDetailedHealthCheck
 } from "./src/routes/health.js";
 import { correlationIdMiddleware, withCorrelation } from "./src/middleware/correlationId.js";
 import { security } from "./src/middleware/security.js";
@@ -40,7 +40,16 @@ import { getDatabaseConfig } from "./src/config/env.validation.js";
 import { MetricsCollector, createMetricsMiddleware } from "./src/infrastructure/monitoring/MetricsCollector.js";
 import { handleMetrics, handleMetricsHistory, handlePrometheusMetrics } from "./src/routes/metrics.js";
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err);
+});
+
 async function startServer() {
+  console.log('START: startServer');
   try {
     // Environment variables are validated on import
     logger.info("Environment variables validated successfully", {
@@ -76,10 +85,10 @@ async function startServer() {
       const cacheManager = CacheManager.getInstance();
       await cacheManager.connect();
       logger.info("Cache manager initialized");
-      
+
       // Start cache warming
       const cacheWarmer = CacheWarmer.getInstance();
-      await cacheWarmer.start(defaultCacheWarmingConfig);
+      await cacheWarmer.startWarming();
       logger.info("Cache warming started");
     }
 
@@ -288,7 +297,7 @@ async function startServer() {
         return yoga(event.node.req, event.node.res, { h3Event: event });
       })
     );
-    
+
     // Mount WebSocket handler
     app.use(
       "/websocket",
@@ -330,7 +339,7 @@ async function startServer() {
         ],
         metricsEndpoints: [
           "/metrics",
-          "/metrics/history", 
+          "/metrics/history",
           "/metrics/prometheus",
         ],
       });
@@ -367,7 +376,7 @@ async function startServer() {
           const cacheWarmer = CacheWarmer.getInstance();
           cacheWarmer.stop();
           logger.info("Cache warming stopped");
-          
+
           const cacheManager = CacheManager.getInstance();
           await cacheManager.disconnect();
           logger.info("Cache manager shutdown complete");
@@ -396,9 +405,11 @@ async function startServer() {
 
     return server;
   } catch (error) {
-    logger.error("Failed to start server", { error });
+    console.error('Failed to start server', { error });
+    console.error('EXITING with code 1');
     process.exit(1);
   }
+  console.log('END: startServer');
 }
 
 startServer();

@@ -13,9 +13,7 @@ export const nlpMutations = builder.mutationFields((t) => ({
         description: 'Natural language command to execute',
       }),
     },
-    authScopes: {
-      authenticated: true,
-    },
+    authScopes: { authenticated: true },
     resolve: async (root, args, context) => {
       if (!context.user) {
         throw new Error('Not authenticated');
@@ -35,9 +33,7 @@ export const nlpMutations = builder.mutationFields((t) => ({
 
   generateTaskSuggestions: t.field({
     type: NLPSuggestionType,
-    authScopes: {
-      authenticated: true,
-    },
+    authScopes: { authenticated: true },
     resolve: async (root, args, context) => {
       if (!context.user) {
         throw new Error('Not authenticated');
@@ -59,8 +55,8 @@ export const nlpMutations = builder.mutationFields((t) => ({
 
       // Get current time context
       const now = new Date();
-      const timeOfDay = now.getHours() < 12 ? 'morning' : 
-                       now.getHours() < 17 ? 'afternoon' : 'evening';
+      const timeOfDay = now.getHours() < 12 ? 'morning' :
+        now.getHours() < 17 ? 'afternoon' : 'evening';
       const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
 
       const suggestions = await nlpService.generateSuggestions({

@@ -11,10 +11,10 @@ const CreateTodoWithAIInput = builder.inputType('CreateTodoWithAIInput', {
     dueDate: t.field({ type: 'DateTime', required: false }),
     tags: t.stringList({ required: false }),
     listId: t.string({ required: false }),
-    useSuggestedPriority: t.boolean({ 
-      required: false, 
+    useSuggestedPriority: t.boolean({
+      required: false,
       defaultValue: true,
-      description: 'Whether to use AI-suggested priority' 
+      description: 'Whether to use AI-suggested priority'
     }),
   }),
 });
@@ -28,9 +28,7 @@ export const aiEnhancedMutations = builder.mutationFields((t) => ({
     args: {
       input: t.arg({ type: CreateTodoWithAIInput, required: true }),
     },
-    authScopes: {
-      authenticated: true,
-    },
+    authScopes: { authenticated: true },
     resolve: async (root, args, context) => {
       if (!context.user) {
         throw new Error('Not authenticated');
@@ -51,7 +49,7 @@ export const aiEnhancedMutations = builder.mutationFields((t) => ({
           args.input.description || null,
           context.user.id
         );
-        
+
         // Use suggested priority if confidence is high enough
         if (prioritySuggestion.confidence > 0.7) {
           priority = prioritySuggestion.suggestedPriority as PriorityEnum;
@@ -95,18 +93,16 @@ export const aiEnhancedMutations = builder.mutationFields((t) => ({
   createTodosFromSuggestions: t.prismaField({
     type: ['Todo'],
     args: {
-      suggestions: t.arg.stringList({ 
+      suggestions: t.arg.stringList({
         required: true,
-        description: 'List of suggested task titles to create' 
+        description: 'List of suggested task titles to create'
       }),
-      listId: t.arg.string({ 
+      listId: t.arg.string({
         required: false,
-        description: 'Optional list to add todos to' 
+        description: 'Optional list to add todos to'
       }),
     },
-    authScopes: {
-      authenticated: true,
-    },
+    authScopes: { authenticated: true },
     resolve: async (query, root, args, context) => {
       if (!context.user) {
         throw new Error('Not authenticated');
