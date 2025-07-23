@@ -1,5 +1,6 @@
 import { trace, context, SpanStatusCode, SpanKind } from '@opentelemetry/api';
-import { Resource } from '@opentelemetry/resources';
+import * as resources from '@opentelemetry/resources';
+const Resource = resources.Resource || resources.default?.Resource;
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
@@ -298,7 +299,7 @@ export class DistributedTracing extends EventEmitter {
     // Inject trace context for propagation
     const headers: Record<string, string> = {};
     trace.setSpan(context.active(), span);
-    
+
     // In real implementation, you would inject context into HTTP headers
     // context.inject(context.active(), headers, new HttpTraceContextPropagator());
 
@@ -383,7 +384,7 @@ export class DistributedTracing extends EventEmitter {
     status: string;
   }> {
     const traceSpans = this.completedSpans.filter(span => span.traceId === traceId);
-    
+
     // Build hierarchy
     const timeline = traceSpans.map(span => ({
       spanId: span.spanId,

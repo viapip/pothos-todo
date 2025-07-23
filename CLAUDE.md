@@ -4,7 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an enterprise-grade Pothos GraphQL API built with Domain-Driven Design (DDD) architecture and CQRS pattern. It uses Bun as the JavaScript runtime, H3 as the HTTP framework, and includes advanced features like AI/ML integration, real-time collaboration, comprehensive monitoring, and enterprise security. The project has undergone extensive modernization to include next-generation capabilities.
+This is a fully modernized, enterprise-grade Pothos GraphQL API built with Domain-Driven Design (DDD) architecture and CQRS pattern. It uses Bun as the JavaScript runtime, H3 as the HTTP framework, and includes comprehensive next-generation capabilities:
+
+- **AI/ML Integration**: LangChain-powered conversational AI, RAG, vector search, and predictive analytics
+- **Enterprise Security**: Quantum-resistant cryptography, advanced threat detection, and compliance frameworks
+- **Edge Computing**: Intelligent CDN optimization and global content distribution
+- **Advanced Observability**: OpenTelemetry distributed tracing, comprehensive monitoring, and anomaly detection
+- **Real-time Collaboration**: Live editing, presence tracking, conflict-free data synchronization
+- **Enterprise Backup & DR**: Complete business continuity infrastructure with automated disaster recovery
+- **Advanced Caching**: Multi-level distributed caching with predictive warming and intelligent invalidation
+
+The project represents a complete transformation from a basic todo application to a modern, enterprise-ready platform with world-class infrastructure capabilities.
+
+### Recent Advanced Modernization
+The application has undergone extensive enterprise modernization with the addition of:
+- **Microservices Architecture**: Service registry, message broker with event sourcing, service mesh with traffic management
+- **Multi-Tenant SaaS Platform**: Complete tenant isolation with billing integration and automated migrations
+- **Advanced Analytics & BI**: Real-time data analytics with predictive modeling and automated reporting
+- **Redis Cluster Caching**: High-performance distributed caching with consistent hashing and intelligent policies
+- **Enterprise API Gateway**: Centralized API management with authentication, rate limiting, and intelligent routing
+- **Production Monitoring**: 360° observability with distributed tracing and automated alerting
 
 ## Development Commands
 
@@ -100,9 +119,14 @@ The codebase follows DDD principles with clear separation of concerns:
    - **Persistence**: Prisma-based repository implementations
    - **Container**: Dependency injection setup
    - **Events**: Event publishing and handling infrastructure
-   - **AI Services**: Advanced AI/ML capabilities (EmbeddingService, NLPService, RAGService)
-   - **Monitoring**: Comprehensive observability (MetricsCollector, PerformanceMonitor)
-   - **Security**: Enterprise security features (rate limiting, threat detection)
+   - **AI Services**: Advanced AI/ML capabilities (AdvancedLangChainService, EmbeddingService, NLPService, RAGService)
+   - **Security**: Quantum-resistant cryptography, advanced threat detection, policy engines
+   - **Edge Computing**: Intelligent CDN optimization, edge computing management
+   - **Observability**: OpenTelemetry integration, distributed tracing, metrics collection
+   - **Collaboration**: Real-time collaboration with operational transforms
+   - **Monitoring**: Advanced monitoring with anomaly detection and alerting
+   - **Caching**: Multi-level distributed caching with predictive warming
+   - **Backup & DR**: Enterprise-grade backup management and disaster recovery orchestration
 
 4. **API Layer** (`src/api/`)
    - **GraphQL Schema**: Pothos-based type-safe schema definitions
@@ -117,9 +141,13 @@ The codebase follows DDD principles with clear separation of concerns:
 - **Repository Pattern**: Domain logic isolated from persistence details
 - **Dependency Injection**: IoC container manages dependencies
 - **Type Safety**: End-to-end type safety from database to GraphQL API
-- **Advanced Caching**: Multi-layer caching with Redis and intelligent warming
-- **AI Integration**: Vector embeddings with Qdrant for semantic search
-- **Real-time Features**: WebSocket subscriptions for live updates
+- **Advanced Caching**: Multi-level distributed caching with consistent hashing and predictive warming
+- **AI Integration**: LangChain-powered conversational AI with vector embeddings (Qdrant) for semantic search
+- **Real-time Features**: WebSocket subscriptions with operational transforms for conflict-free collaboration
+- **Enterprise Security**: Quantum-resistant cryptography with post-quantum algorithms (Kyber, Dilithium, SPHINCS+)
+- **Edge Computing**: Intelligent CDN optimization with ML-based content distribution
+- **Comprehensive Observability**: OpenTelemetry distributed tracing with Prometheus metrics
+- **Business Continuity**: Complete backup and disaster recovery infrastructure with automated failover
 
 ## Configuration System
 
@@ -303,14 +331,81 @@ The project uses **22+ UnJS packages** including:
 - `ufo`, `unbuild`, `unconfig`, `uncrypto`, `unenv`
 - `unhead`, `unimport`, `unrouter`, `unstorage`, `untyped`, `unws`
 
-## AI and Vector Search Features
+## Microservices & Enterprise Architecture
 
-### Infrastructure Components
-1. **Vector Database**: Qdrant for storing and searching embeddings
-2. **Embedding Service**: OpenAI text-embedding-3-small model
-3. **NLP Service**: OpenAI GPT-4 mini for natural language processing
-4. **Cache Layer**: Redis for query result caching
-5. **Event-Driven Embedding**: Automatic embedding generation on todo/list changes
+### Service Registry & Discovery (`src/infrastructure/microservices/ServiceRegistry.ts`)
+- **Service Discovery**: Automatic service registration and health monitoring
+- **Load Balancing**: Round-robin, least-connections, weighted, and IP-hash strategies
+- **Circuit Breakers**: Automatic failure detection with configurable thresholds
+- **Health Monitoring**: Continuous health checks with automatic node recovery
+- **Metrics Collection**: Performance monitoring with connection and latency tracking
+
+### Message Broker System (`src/infrastructure/microservices/MessageBroker.ts`)
+- **Event-Driven Architecture**: Pub/sub messaging with topic-based routing
+- **Event Sourcing**: Complete event store with stream management and replay capabilities
+- **Saga Pattern**: Distributed transaction management with automatic compensation
+- **Dead Letter Queues**: Failed message handling with retry mechanisms
+- **Queue Management**: Priority queues, TTL, and statistics tracking
+
+### Service Mesh (`src/infrastructure/microservices/ServiceMesh.ts`)
+- **Traffic Management**: Advanced routing with weighted traffic splitting
+- **Security Policies**: mTLS, RBAC, and network security policies
+- **Observability**: Distributed tracing with request correlation
+- **Middleware Pipeline**: Authentication, rate limiting, metrics, and logging
+- **Fault Tolerance**: Circuit breakers, retries, and timeout policies
+
+### Multi-Tenant Architecture (`src/infrastructure/multitenancy/MultiTenantManager.ts`)
+- **Tenant Isolation**: Shared, hybrid, and dedicated isolation levels
+- **Resource Management**: Auto-scaling with quota enforcement and billing integration
+- **Migration Tools**: Automated tenant migrations with rollback capabilities
+- **Compliance Support**: GDPR, SOC2, HIPAA, and PCI compliance frameworks
+- **Billing Integration**: Usage tracking with overage handling and multiple billing cycles
+
+### Advanced Analytics (`src/infrastructure/analytics/AdvancedAnalytics.ts`)
+- **Real-time Metrics**: Live data streaming with configurable time granularities
+- **Query Engine**: Flexible analytics with filters, aggregations, and time-series analysis
+- **Predictive Models**: Machine learning for forecasting and anomaly detection
+- **Report Generation**: Automated report creation with multiple export formats
+- **Alert System**: Intelligent alerting with configurable thresholds and channels
+
+### Redis Cluster Manager (`src/infrastructure/cache/RedisClusterManager.ts`)
+- **Distributed Caching**: Consistent hashing with automatic node discovery
+- **Cache Policies**: Intelligent eviction strategies with TTL management
+- **Distributed Locking**: Coordination primitives with auto-renewal capabilities
+- **Performance Monitoring**: Cache hit rates, latency tracking, and throughput metrics
+- **Failover Management**: Automatic failover with circuit breaker integration
+
+### Enterprise API Gateway (`src/infrastructure/gateway/APIGateway.ts`)
+- **Centralized Management**: Single entry point for all API requests with intelligent routing
+- **Authentication & Authorization**: Multi-scheme auth support (Bearer, API Key, OAuth2, Basic)
+- **Rate Limiting**: Configurable rate limiting per client, IP, user, and endpoint
+- **Response Caching**: Intelligent caching with cache key generation and TTL management
+- **Request/Response Transformation**: Middleware for request modification and response filtering
+- **Analytics & Monitoring**: Comprehensive API usage analytics and performance monitoring
+- **Client Management**: API key management with quota enforcement and usage tracking
+- **Health Integration**: Integration with service mesh for health-aware routing
+
+### Advanced AI Manager (`src/infrastructure/ai/AdvancedAIManager.ts`)
+- **Multi-Provider Support**: OpenAI, Anthropic, Google, Azure with intelligent routing
+- **Cost Optimization**: Provider selection based on cost, latency, and quality metrics
+- **Rate Limiting**: Provider-aware rate limiting with automatic failover
+- **Intelligent Caching**: Response caching with cache invalidation strategies
+- **Model Management**: Dynamic model selection with capability matching
+- **Usage Analytics**: Comprehensive tracking of AI usage, costs, and performance
+
+## Advanced Enterprise Features
+
+### AI and Machine Learning Integration
+
+#### Infrastructure Components
+1. **Advanced LangChain Service**: Conversational AI with memory and context management
+2. **Vector Database**: Qdrant for storing and searching embeddings with collections and filtering
+3. **Embedding Service**: OpenAI text-embedding-3-small model with batch processing
+4. **NLP Service**: OpenAI GPT-4 for natural language processing and command interpretation
+5. **RAG Service**: Retrieval-Augmented Generation with source attribution and confidence scoring
+6. **ML Prediction Service**: Time-series analysis and predictive modeling for task completion
+7. **AI Insight Service**: Advanced analytics and productivity insights generation
+8. **Cache Layer**: Multi-level caching with intelligent invalidation and warming
 
 ### AI-Powered GraphQL Operations
 
@@ -406,6 +501,34 @@ subscription CollaborationEvents {
 7. Consider AI integration opportunities
 8. **Always run `bun run check:types` before committing**
 
+### Enterprise Architecture Development
+When working with the advanced enterprise features:
+
+#### Microservices Development
+- **Service Registration**: All new services should register with the ServiceRegistry
+- **Event Publishing**: Use MessageBroker for all inter-service communication
+- **Health Checks**: Implement health endpoints for service mesh integration
+- **Circuit Breakers**: Wrap external service calls with circuit breaker patterns
+- **Distributed Tracing**: Ensure all operations include trace propagation
+
+#### Multi-Tenant Development
+- **Tenant Context**: Always work within a tenant context using MultiTenantManager.createContext()
+- **Resource Isolation**: Respect tenant isolation levels (shared, hybrid, dedicated)
+- **Usage Tracking**: Track resource usage for billing and quota enforcement
+- **Data Partitioning**: Ensure proper data isolation based on tenant configuration
+
+#### Caching Strategy
+- **Cache Policies**: Apply appropriate cache policies based on data access patterns
+- **Distributed Locks**: Use RedisClusterManager for coordination across services
+- **Cache Invalidation**: Follow tag-based invalidation strategies
+- **Performance Monitoring**: Monitor cache hit rates and adjust policies accordingly
+
+#### Analytics Integration
+- **Metrics Collection**: Use AdvancedAnalytics.recordMetric() for business metrics
+- **Custom Queries**: Create analytics queries for new data insights
+- **Real-time Data**: Leverage real-time data streams for live dashboards
+- **Predictive Models**: Consider ML opportunities for new feature predictions
+
 ### Code Organization Principles
 - Keep domain logic in aggregates, not in GraphQL resolvers
 - Use commands for all state-changing operations
@@ -474,16 +597,26 @@ bun test src/tests/performance/
 - Production build: `bun run build:prod`
 
 ### Service Dependencies
-- PostgreSQL database
-- Redis for caching
-- Qdrant for vector search
-- OpenAI API access
+- **Primary Services**: PostgreSQL database, Redis Cluster, Qdrant vector database
+- **External APIs**: OpenAI API for AI features, Anthropic API for alternative AI provider
+- **Infrastructure**: Service registry, message broker, API gateway
+- **Monitoring**: OpenTelemetry collector, Prometheus metrics, alerting system
 
-### Monitoring Setup
-- OpenTelemetry instrumentation
-- Prometheus metrics export
-- Health check endpoints for load balancers
-- Structured logging with correlation IDs
+### Enterprise Deployment Architecture
+- **Microservices Cluster**: Service registry with load balancing and failover
+- **Multi-Tenant Infrastructure**: Tenant isolation with resource management
+- **Distributed Caching**: Redis Cluster with consistent hashing
+- **API Gateway**: Centralized entry point with authentication and rate limiting
+- **Analytics Pipeline**: Real-time data processing with automated reporting
+- **AI/ML Services**: Multi-provider AI routing with cost optimization
+
+### Monitoring & Observability
+- **Distributed Tracing**: OpenTelemetry with service mesh integration
+- **Metrics Collection**: Prometheus-compatible metrics with custom business KPIs
+- **Health Monitoring**: Comprehensive health checks across all service tiers
+- **Analytics Dashboard**: Real-time operational and business intelligence
+- **Alert Management**: Intelligent alerting with escalation policies
+- **Performance Monitoring**: Cache hit rates, response times, and throughput tracking
 
 ## Architecture Highlights
 

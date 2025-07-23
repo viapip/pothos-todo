@@ -1,388 +1,345 @@
-import { logger } from '@/logger.js';
-import { MetricsCollector } from '../monitoring/MetricsCollector.js';
-import { CacheManager } from '../cache/CacheManager.js';
-import { GracefulDegradation } from '../resilience/GracefulDegradation.js';
-import { hash } from 'ohash';
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'pathe';
+/**
+ * Advanced AI Manager
+ * Comprehensive AI/ML integration with multiple providers, intelligent routing, and model management
+ */
 
-export interface CustomModel {
+import { logger, objectUtils, stringUtils } from '@/lib/unjs-utils.js';
+import { configManager } from '@/config/unjs-config.js';
+import { validationService } from '@/infrastructure/validation/UnJSValidation.js';
+import { monitoring } from '@/infrastructure/observability/AdvancedMonitoring.js';
+import { httpClient } from '@/infrastructure/http/UnJSHttpClient.js';
+import { z } from 'zod';
+
+export interface AIProvider {
   id: string;
   name: string;
-  type: 'text_generation' | 'text_classification' | 'embeddings' | 'image_analysis' | 'audio_processing';
-  baseModel: string;
-  version: string;
-  status: 'training' | 'ready' | 'error' | 'deploying';
-  metrics: {
-    accuracy?: number;
-    f1Score?: number;
-    precision?: number;
-    recall?: number;
-    lossValue?: number;
-  };
-  trainingData: {
-    size: number;
-    lastUpdated: Date;
-    source: string;
-  };
-  deployment: {
-    endpoint?: string;
-    instances: number;
-    lastDeployed?: Date;
-    cpuUsage: number;
-    memoryUsage: number;
-  };
-  fineTuningConfig: {
-    learningRate: number;
-    batchSize: number;
-    epochs: number;
+  type: 'openai' | 'anthropic' | 'google' | 'azure' | 'huggingface' | 'local';
+  baseUrl: string;
+  apiKey?: string;
+  models: AIModel[];
+  limits: {
+    requestsPerMinute: number;
+    tokensPerMinute: number;
     maxTokens: number;
-    temperature: number;
-    topP: number;
   };
-  createdAt: Date;
-  updatedAt: Date;
+  status: 'active' | 'inactive' | 'rate_limited' | 'error';
+  priority: number;
+  costPerToken: {
+    input: number;
+    output: number;
+  };
 }
 
-export interface TrainingJob {
+export interface AIModel {
   id: string;
-  modelId: string;
-  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
-  progress: number; // 0-100
-  currentEpoch: number;
-  totalEpochs: number;
-  metrics: {
-    loss: number[];
-    accuracy: number[];
-    validationLoss: number[];
-    validationAccuracy: number[];
-  };
-  config: {
-    datasetPath: string;
-    outputPath: string;
-    hyperparameters: Record<string, any>;
-  };
-  startedAt?: Date;
-  completedAt?: Date;
-  estimatedTimeRemaining?: number;
-  logs: Array<{
-    timestamp: Date;
-    level: 'info' | 'warn' | 'error';
-    message: string;
-  }>;
-}
-
-export interface MultiModalInput {
-  text?: string;
-  image?: {
-    url?: string;
-    base64?: string;
-    mimeType: string;
-  };
-  audio?: {
-    url?: string;
-    base64?: string;
-    mimeType: string;
-    duration?: number;
-  };
-  video?: {
-    url?: string;
-    base64?: string;
-    mimeType: string;
-    duration?: number;
-  };
-  metadata?: Record<string, any>;
-}
-
-export interface MultiModalOutput {
-  text?: string;
-  image?: {
-    url: string;
-    description?: string;
-    objects?: Array<{
-      label: string;
-      confidence: number;
-      boundingBox?: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-      };
-    }>;
-  };
-  audio?: {
-    transcript?: string;
-    sentiment?: string;
-    language?: string;
-    confidence: number;
-  };
-  analysis: {
-    confidence: number;
-    processingTime: number;
-    modelUsed: string;
-    metadata?: Record<string, any>;
+  name: string;
+  provider: string;
+  type: 'text' | 'chat' | 'completion' | 'embedding' | 'image' | 'audio' | 'multimodal';
+  capabilities: string[];
+  contextWindow: number;
+  maxTokens: number;
+  supportsFunctions: boolean;
+  supportsStreaming: boolean;
+  inputModalities: string[];
+  outputModalities: string[];
+  metadata: {
+    description: string;
+    version: string;
+    trainingCutoff?: string;
+    languages: string[];
   };
 }
 
-export interface AIWorkflow {
+export interface AIRequest {
   id: string;
+  type: 'completion' | 'chat' | 'embedding' | 'image_generation' | 'audio_transcription' | 'function_call';
+  model: string;
+  provider?: string;
+  input: {
+    prompt?: string;
+    messages?: ChatMessage[];
+    functions?: AIFunction[];
+    data?: any;
+  };
+  options: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+    topK?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+    stream?: boolean;
+    seed?: number;
+  };
+  metadata: {
+    userId?: string;
+    sessionId?: string;
+    priority: 'low' | 'normal' | 'high' | 'critical';
+    timeout: number;
+    retries: number;
+    cacheable: boolean;
+    tags: string[];
+  };
+}
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant' | 'function';
+  content: string | any[];
+  name?: string;
+  functionCall?: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export interface AIFunction {
   name: string;
   description: string;
-  steps: Array<{
-    id: string;
-    type: 'preprocess' | 'model_inference' | 'postprocess' | 'validation';
-    modelId?: string;
-    config: Record<string, any>;
-    dependencies: string[];
-  }>;
-  triggers: Array<{
-    type: 'schedule' | 'webhook' | 'event';
-    config: Record<string, any>;
-  }>;
-  status: 'active' | 'paused' | 'error';
-  metrics: {
-    totalRuns: number;
-    successRate: number;
-    averageExecutionTime: number;
-    lastRun?: Date;
+  parameters: {
+    type: string;
+    properties: Record<string, any>;
+    required: string[];
   };
-  createdAt: Date;
-  updatedAt: Date;
 }
 
+export interface AIResponse {
+  id: string;
+  requestId: string;
+  provider: string;
+  model: string;
+  type: string;
+  output: {
+    text?: string;
+    messages?: ChatMessage[];
+    embeddings?: number[];
+    functionCall?: {
+      name: string;
+      arguments: any;
+    };
+    data?: any;
+  };
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    cost: number;
+  };
+  metadata: {
+    finishReason: string;
+    responseTime: number;
+    cached: boolean;
+    model: string;
+    timestamp: Date;
+  };
+}
+
+export interface ModelRouter {
+  rules: RoutingRule[];
+  fallbackProvider?: string;
+  loadBalancing: 'round-robin' | 'cost-optimized' | 'latency-optimized' | 'quality-optimized';
+}
+
+export interface RoutingRule {
+  id: string;
+  condition: {
+    modelType?: string;
+    provider?: string;
+    priority?: string;
+    userTier?: string;
+    inputSize?: { min?: number; max?: number };
+  };
+  target: {
+    provider: string;
+    model: string;
+    weight?: number;
+  };
+  enabled: boolean;
+}
+
+/**
+ * Advanced AI Manager for intelligent model routing and management
+ */
 export class AdvancedAIManager {
-  private static instance: AdvancedAIManager;
-  private customModels = new Map<string, CustomModel>();
-  private trainingJobs = new Map<string, TrainingJob>();
-  private workflows = new Map<string, AIWorkflow>();
-  private metrics: MetricsCollector;
-  private cache: CacheManager;
-  private gracefulDegradation: GracefulDegradation;
-  private trainingInterval?: NodeJS.Timeout;
-  private workflowInterval?: NodeJS.Timeout;
+  private providers: Map<string, AIProvider> = new Map();
+  private models: Map<string, AIModel> = new Map();
+  private requests: Map<string, AIRequest> = new Map();
+  private responses: Map<string, AIResponse> = new Map();
+  private router: ModelRouter;
+  private cache: Map<string, { response: AIResponse; expires: Date }> = new Map();
+  private rateLimiters: Map<string, { requests: number; tokens: number; resetTime: Date }> = new Map();
 
-  private constructor() {
-    this.metrics = MetricsCollector.getInstance();
-    this.cache = CacheManager.getInstance();
-    this.gracefulDegradation = GracefulDegradation.getInstance();
-    this.setupDefaultModels();
-    this.startTrainingMonitoring();
-    this.startWorkflowExecution();
-  }
-
-  public static getInstance(): AdvancedAIManager {
-    if (!AdvancedAIManager.instance) {
-      AdvancedAIManager.instance = new AdvancedAIManager();
-    }
-    return AdvancedAIManager.instance;
-  }
-
-  /**
-   * Create a custom model for fine-tuning
-   */
-  public async createCustomModel(
-    name: string,
-    type: CustomModel['type'],
-    baseModel: string,
-    fineTuningConfig: CustomModel['fineTuningConfig']
-  ): Promise<CustomModel> {
-    const modelId = hash({ name, baseModel, timestamp: Date.now() });
-
-    const model: CustomModel = {
-      id: modelId,
-      name,
-      type,
-      baseModel,
-      version: '1.0.0',
-      status: 'training',
-      metrics: {},
-      trainingData: {
-        size: 0,
-        lastUpdated: new Date(),
-        source: 'user_provided',
-      },
-      deployment: {
-        instances: 0,
-        cpuUsage: 0,
-        memoryUsage: 0,
-      },
-      fineTuningConfig,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+  constructor() {
+    this.router = {
+      rules: [],
+      loadBalancing: 'cost-optimized',
     };
 
-    this.customModels.set(modelId, model);
-
-    // Create model directory
-    const modelDir = join(process.cwd(), 'models', modelId);
-    if (!existsSync(modelDir)) {
-      mkdirSync(modelDir, { recursive: true });
-    }
-
-    // Save model configuration
-    const configPath = join(modelDir, 'config.json');
-    writeFileSync(configPath, JSON.stringify(model, null, 2));
-
-    logger.info('Custom model created', {
-      modelId,
-      name,
-      type,
-      baseModel,
-    });
-
-    this.metrics.recordMetric('ai.model.created', 1, {
-      type,
-      baseModel,
-    });
-
-    return model;
+    this.setupValidationSchemas();
+    this.registerProviders();
+    this.setupRoutingRules();
+    this.startProviderMonitoring();
+    this.startCacheCleanup();
   }
 
   /**
-   * Start fine-tuning a model
+   * Setup validation schemas
    */
-  public async startFineTuning(
-    modelId: string,
-    trainingDataPath: string,
-    validationDataPath?: string
-  ): Promise<TrainingJob> {
-    const model = this.customModels.get(modelId);
-    if (!model) {
-      throw new Error(`Model ${modelId} not found`);
-    }
-
-    const jobId = hash({ modelId, trainingDataPath, timestamp: Date.now() });
-
-    const job: TrainingJob = {
-      id: jobId,
-      modelId,
-      status: 'queued',
-      progress: 0,
-      currentEpoch: 0,
-      totalEpochs: model.fineTuningConfig.epochs,
-      metrics: {
-        loss: [],
-        accuracy: [],
-        validationLoss: [],
-        validationAccuracy: [],
-      },
-      config: {
-        datasetPath: trainingDataPath,
-        outputPath: join(process.cwd(), 'models', modelId, 'checkpoints'),
-        hyperparameters: model.fineTuningConfig,
-      },
-      logs: [],
-    };
-
-    this.trainingJobs.set(jobId, job);
-
-    // Update model status
-    model.status = 'training';
-    model.updatedAt = new Date();
-
-    // Start training (simulated)
-    setTimeout(() => {
-      this.executeTrainingJob(jobId);
-    }, 1000);
-
-    logger.info('Fine-tuning started', {
-      jobId,
-      modelId,
-      trainingDataPath,
+  private setupValidationSchemas(): void {
+    const aiRequestSchema = z.object({
+      type: z.enum(['completion', 'chat', 'embedding', 'image_generation', 'audio_transcription', 'function_call']),
+      model: z.string(),
+      provider: z.string().optional(),
+      input: z.object({
+        prompt: z.string().optional(),
+        messages: z.array(z.object({
+          role: z.string(),
+          content: z.union([z.string(), z.array(z.any())]),
+          name: z.string().optional(),
+        })).optional(),
+        functions: z.array(z.any()).optional(),
+        data: z.any().optional(),
+      }),
+      options: z.object({
+        temperature: z.number().min(0).max(2).optional(),
+        maxTokens: z.number().min(1).optional(),
+        topP: z.number().min(0).max(1).optional(),
+        stream: z.boolean().optional(),
+      }),
+      metadata: z.object({
+        userId: z.string().optional(),
+        sessionId: z.string().optional(),
+        priority: z.enum(['low', 'normal', 'high', 'critical']),
+        timeout: z.number(),
+        retries: z.number(),
+        cacheable: z.boolean(),
+        tags: z.array(z.string()),
+      }),
     });
 
-    this.metrics.recordMetric('ai.training.started', 1, {
-      modelId,
-      modelType: model.type,
-    });
-
-    return job;
+    validationService.registerSchema('aiRequest', aiRequestSchema);
   }
 
   /**
-   * Process multi-modal input
+   * Register AI provider
    */
-  public async processMultiModal(
-    input: MultiModalInput,
-    options: {
-      modelId?: string;
-      outputFormat?: 'text' | 'structured' | 'complete';
-      maxTokens?: number;
-      temperature?: number;
-    } = {}
-  ): Promise<MultiModalOutput> {
+  registerProvider(provider: Omit<AIProvider, 'id'>): string {
+    const id = stringUtils.random(8);
+    const aiProvider: AIProvider = { id, ...provider };
+    
+    this.providers.set(id, aiProvider);
+
+    // Register models from this provider
+    provider.models.forEach(model => {
+      this.models.set(`${id}:${model.id}`, { ...model, provider: id });
+    });
+
+    logger.info('AI provider registered', {
+      providerId: id,
+      name: provider.name,
+      type: provider.type,
+      modelsCount: provider.models.length,
+    });
+
+    monitoring.recordMetric({
+      name: 'ai.provider.registered',
+      value: 1,
+      tags: {
+        provider: provider.name,
+        type: provider.type,
+      },
+    });
+
+    return id;
+  }
+
+  /**
+   * Make AI request with intelligent routing
+   */
+  async request(request: Omit<AIRequest, 'id'>): Promise<AIResponse> {
+    const requestId = stringUtils.random(12);
+    const aiRequest: AIRequest = { id: requestId, ...request };
+    
+    this.requests.set(requestId, aiRequest);
+
+    const spanId = monitoring.startTrace(`ai.request.${request.type}`);
     const startTime = Date.now();
 
     try {
-      return await this.gracefulDegradation.executeAIOperation(
-        'multimodal',
-        async () => {
-          // Determine appropriate model
-          const modelId = options.modelId || this.selectBestModel(input);
-          const model = this.customModels.get(modelId);
-
-          if (!model || model.status !== 'ready') {
-            throw new Error(`Model ${modelId} not available`);
-          }
-
-          // Process each modality
-          const results: Partial<MultiModalOutput> = {};
-
-          // Text processing
-          if (input.text) {
-            results.text = await this.processText(input.text, model, options);
-          }
-
-          // Image processing
-          if (input.image) {
-            results.image = await this.processImage(input.image, model);
-          }
-
-          // Audio processing
-          if (input.audio) {
-            results.audio = await this.processAudio(input.audio, model);
-          }
-
-          const processingTime = Date.now() - startTime;
-
-          const output: MultiModalOutput = {
-            ...results,
-            analysis: {
-              confidence: this.calculateOverallConfidence(results),
-              processingTime,
-              modelUsed: modelId,
-              metadata: {
-                inputTypes: Object.keys(input).filter(k => k !== 'metadata'),
-                outputTypes: Object.keys(results),
-              },
-            },
-          };
-
-          // Cache result
-          const cacheKey = `multimodal:${hash(input)}`;
-          await this.cache.set(cacheKey, output, { ttl: 3600 });
-
-          this.metrics.recordMetric('ai.multimodal.processed', 1, {
-            modelId,
-            inputTypes: output.analysis.metadata?.inputTypes?.join(','),
-            processingTime,
+      // Check cache if cacheable
+      if (request.metadata.cacheable) {
+        const cachedResponse = await this.getCachedResponse(aiRequest);
+        if (cachedResponse) {
+          monitoring.finishSpan(spanId, {
+            success: true,
+            cached: true,
+            requestId,
+            model: request.model,
           });
 
-          return output;
-        },
-        {
-          query: JSON.stringify(input),
-          fallbackData: this.getMultiModalFallback(input),
-        }
-      );
+          monitoring.recordMetric({
+            name: 'ai.request.cache_hit',
+            value: 1,
+            tags: {
+              model: request.model,
+              type: request.type,
+            },
+          });
 
-    } catch (error) {
-      logger.error('Multi-modal processing failed', error as Error, {
-        inputTypes: Object.keys(input).filter(k => k !== 'metadata'),
+          return cachedResponse;
+        }
+      }
+
+      // Route request to appropriate provider
+      const { provider, model } = await this.routeRequest(aiRequest);
+
+      // Check rate limits
+      await this.checkRateLimit(provider);
+
+      // Make the actual request
+      const response = await this.makeProviderRequest(provider, model, aiRequest);
+
+      // Cache response if cacheable
+      if (request.metadata.cacheable && response.metadata.finishReason === 'stop') {
+        await this.cacheResponse(aiRequest, response);
+      }
+
+      // Update provider metrics
+      this.updateProviderMetrics(provider, response, Date.now() - startTime);
+
+      monitoring.finishSpan(spanId, {
+        success: true,
+        cached: false,
+        requestId,
+        provider: provider.name,
+        model: model.name,
+        tokens: response.usage.totalTokens,
+        cost: response.usage.cost,
       });
 
-      this.metrics.recordMetric('ai.multimodal.error', 1, {
-        error: (error as Error).message,
+      return response;
+
+    } catch (error) {
+      monitoring.finishSpan(spanId, {
+        success: false,
+        requestId,
+        error: String(error),
+      });
+
+      monitoring.recordMetric({
+        name: 'ai.request.error',
+        value: 1,
+        tags: {
+          model: request.model,
+          type: request.type,
+          error: 'request_failed',
+        },
+      });
+
+      logger.error('AI request failed', {
+        requestId,
+        model: request.model,
+        type: request.type,
+        error: String(error),
       });
 
       throw error;
@@ -390,618 +347,738 @@ export class AdvancedAIManager {
   }
 
   /**
-   * Create AI workflow
+   * Route request to appropriate provider and model
    */
-  public async createWorkflow(
-    name: string,
-    description: string,
-    steps: AIWorkflow['steps'],
-    triggers: AIWorkflow['triggers']
-  ): Promise<AIWorkflow> {
-    const workflowId = hash({ name, steps, timestamp: Date.now() });
-
-    const workflow: AIWorkflow = {
-      id: workflowId,
-      name,
-      description,
-      steps,
-      triggers,
-      status: 'active',
-      metrics: {
-        totalRuns: 0,
-        successRate: 100,
-        averageExecutionTime: 0,
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    this.workflows.set(workflowId, workflow);
-
-    logger.info('AI workflow created', {
-      workflowId,
-      name,
-      steps: steps.length,
-      triggers: triggers.length,
+  private async routeRequest(request: AIRequest): Promise<{ provider: AIProvider; model: AIModel }> {
+    // Find applicable routing rules
+    const applicableRules = this.router.rules.filter(rule => {
+      if (!rule.enabled) return false;
+      if (rule.condition.modelType && rule.condition.modelType !== request.type) return false;
+      if (rule.condition.provider && rule.condition.provider !== request.provider) return false;
+      if (rule.condition.priority && rule.condition.priority !== request.metadata.priority) return false;
+      
+      if (rule.condition.inputSize) {
+        const inputLength = this.calculateInputSize(request);
+        if (rule.condition.inputSize.min && inputLength < rule.condition.inputSize.min) return false;
+        if (rule.condition.inputSize.max && inputLength > rule.condition.inputSize.max) return false;
+      }
+      
+      return true;
     });
 
-    this.metrics.recordMetric('ai.workflow.created', 1, {
-      steps: steps.length,
-      triggers: triggers.length,
-    });
+    if (applicableRules.length > 0) {
+      // Apply load balancing among applicable rules
+      const selectedRule = this.selectRuleByLoadBalancing(applicableRules);
+      const provider = this.providers.get(selectedRule.target.provider);
+      const model = this.models.get(`${selectedRule.target.provider}:${selectedRule.target.model}`);
+      
+      if (provider && model) {
+        return { provider, model };
+      }
+    }
 
-    return workflow;
+    // Fallback to default routing
+    return this.getDefaultProviderAndModel(request);
   }
 
   /**
-   * Execute AI workflow
+   * Calculate input size for routing decisions
    */
-  public async executeWorkflow(
-    workflowId: string,
-    input: Record<string, any>
-  ): Promise<{
-    success: boolean;
-    output?: Record<string, any>;
-    error?: string;
-    executionTime: number;
-    stepResults: Array<{
-      stepId: string;
-      success: boolean;
-      output?: any;
-      error?: string;
-      duration: number;
-    }>;
-  }> {
-    const workflow = this.workflows.get(workflowId);
-    if (!workflow) {
-      throw new Error(`Workflow ${workflowId} not found`);
+  private calculateInputSize(request: AIRequest): number {
+    let size = 0;
+    
+    if (request.input.prompt) {
+      size += request.input.prompt.length;
+    }
+    
+    if (request.input.messages) {
+      size += request.input.messages.reduce((sum, msg) => {
+        return sum + (typeof msg.content === 'string' ? msg.content.length : JSON.stringify(msg.content).length);
+      }, 0);
+    }
+    
+    return size;
+  }
+
+  /**
+   * Select rule based on load balancing strategy
+   */
+  private selectRuleByLoadBalancing(rules: RoutingRule[]): RoutingRule {
+    switch (this.router.loadBalancing) {
+      case 'cost-optimized':
+        return this.selectCostOptimizedRule(rules);
+      case 'latency-optimized':
+        return this.selectLatencyOptimizedRule(rules);
+      case 'quality-optimized':
+        return this.selectQualityOptimizedRule(rules);
+      default:
+        return rules[Math.floor(Math.random() * rules.length)];
+    }
+  }
+
+  /**
+   * Select cost-optimized rule
+   */
+  private selectCostOptimizedRule(rules: RoutingRule[]): RoutingRule {
+    return rules.reduce((cheapest, current) => {
+      const currentProvider = this.providers.get(current.target.provider);
+      const cheapestProvider = this.providers.get(cheapest.target.provider);
+      
+      if (!currentProvider || !cheapestProvider) return cheapest;
+      
+      const currentCost = currentProvider.costPerToken.input + currentProvider.costPerToken.output;
+      const cheapestCost = cheapestProvider.costPerToken.input + cheapestProvider.costPerToken.output;
+      
+      return currentCost < cheapestCost ? current : cheapest;
+    });
+  }
+
+  /**
+   * Select latency-optimized rule
+   */
+  private selectLatencyOptimizedRule(rules: RoutingRule[]): RoutingRule {
+    // For now, prefer local providers
+    const localRule = rules.find(rule => {
+      const provider = this.providers.get(rule.target.provider);
+      return provider?.type === 'local';
+    });
+    
+    return localRule || rules[0];
+  }
+
+  /**
+   * Select quality-optimized rule
+   */
+  private selectQualityOptimizedRule(rules: RoutingRule[]): RoutingRule {
+    // Prefer OpenAI and Anthropic for quality
+    const qualityRule = rules.find(rule => {
+      const provider = this.providers.get(rule.target.provider);
+      return provider?.type === 'openai' || provider?.type === 'anthropic';
+    });
+    
+    return qualityRule || rules[0];
+  }
+
+  /**
+   * Get default provider and model
+   */
+  private getDefaultProviderAndModel(request: AIRequest): { provider: AIProvider; model: AIModel } {
+    // Find available providers
+    const availableProviders = Array.from(this.providers.values())
+      .filter(p => p.status === 'active')
+      .sort((a, b) => a.priority - b.priority);
+
+    if (availableProviders.length === 0) {
+      throw new Error('No available AI providers');
     }
 
+    const provider = availableProviders[0];
+    
+    // Find compatible model
+    const compatibleModel = provider.models.find(model => {
+      if (request.model && model.name !== request.model) return false;
+      return model.type === request.type || model.type === 'multimodal';
+    });
+
+    if (!compatibleModel) {
+      throw new Error(`No compatible model found for request type: ${request.type}`);
+    }
+
+    const model = this.models.get(`${provider.id}:${compatibleModel.id}`);
+    if (!model) {
+      throw new Error(`Model not found: ${compatibleModel.id}`);
+    }
+
+    return { provider, model };
+  }
+
+  /**
+   * Check rate limits for provider
+   */
+  private async checkRateLimit(provider: AIProvider): Promise<void> {
+    const now = new Date();
+    const rateLimiter = this.rateLimiters.get(provider.id);
+
+    if (!rateLimiter || now > rateLimiter.resetTime) {
+      this.rateLimiters.set(provider.id, {
+        requests: 1,
+        tokens: 0,
+        resetTime: new Date(now.getTime() + 60000), // 1 minute
+      });
+      return;
+    }
+
+    if (rateLimiter.requests >= provider.limits.requestsPerMinute) {
+      provider.status = 'rate_limited';
+      throw new Error(`Rate limit exceeded for provider: ${provider.name}`);
+    }
+
+    rateLimiter.requests++;
+  }
+
+  /**
+   * Make request to AI provider
+   */
+  private async makeProviderRequest(
+    provider: AIProvider,
+    model: AIModel,
+    request: AIRequest
+  ): Promise<AIResponse> {
+    const requestPayload = this.buildProviderPayload(provider, model, request);
     const startTime = Date.now();
-    const stepResults: any[] = [];
-    let currentData = input;
 
     try {
-      // Execute steps in dependency order
-      const sortedSteps = this.sortStepsByDependencies(workflow.steps);
-
-      for (const step of sortedSteps) {
-        const stepStartTime = Date.now();
-
-        try {
-          const stepOutput = await this.executeWorkflowStep(step, currentData);
-          const stepDuration = Date.now() - stepStartTime;
-
-          stepResults.push({
-            stepId: step.id,
-            success: true,
-            output: stepOutput,
-            duration: stepDuration,
-          });
-
-          // Update current data with step output
-          currentData = { ...currentData, ...stepOutput };
-
-        } catch (error) {
-          const stepDuration = Date.now() - stepStartTime;
-
-          stepResults.push({
-            stepId: step.id,
-            success: false,
-            error: (error as Error).message,
-            duration: stepDuration,
-          });
-
-          throw error;
+      const response = await httpClient.post(
+        `${provider.baseUrl}/chat/completions`,
+        requestPayload,
+        {
+          headers: {
+            'Authorization': provider.apiKey ? `Bearer ${provider.apiKey}` : undefined,
+            'Content-Type': 'application/json',
+          },
+          timeout: request.metadata.timeout,
         }
-      }
+      );
 
-      const executionTime = Date.now() - startTime;
-
-      // Update workflow metrics
-      workflow.metrics.totalRuns++;
-      workflow.metrics.lastRun = new Date();
-      workflow.metrics.averageExecutionTime = 
-        (workflow.metrics.averageExecutionTime + executionTime) / 2;
-
-      logger.info('Workflow executed successfully', {
-        workflowId,
-        executionTime,
-        steps: stepResults.length,
-      });
-
-      this.metrics.recordMetric('ai.workflow.executed', 1, {
-        workflowId,
-        success: true,
-        executionTime,
-      });
-
-      return {
-        success: true,
-        output: currentData,
-        executionTime,
-        stepResults,
-      };
+      const aiResponse = this.parseProviderResponse(provider, model, request, response.data, Date.now() - startTime);
+      this.responses.set(aiResponse.id, aiResponse);
+      
+      return aiResponse;
 
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-
-      // Update workflow metrics
-      workflow.metrics.totalRuns++;
-      const successCount = workflow.metrics.totalRuns * (workflow.metrics.successRate / 100);
-      workflow.metrics.successRate = (successCount / workflow.metrics.totalRuns) * 100;
-
-      logger.error('Workflow execution failed', error as Error, {
-        workflowId,
-        executionTime,
-      });
-
-      this.metrics.recordMetric('ai.workflow.executed', 1, {
-        workflowId,
-        success: false,
-        executionTime,
-        error: (error as Error).message,
-      });
-
-      return {
-        success: false,
-        error: (error as Error).message,
-        executionTime,
-        stepResults,
-      };
+      provider.status = 'error';
+      throw new Error(`Provider request failed: ${String(error)}`);
     }
   }
 
   /**
-   * Get model metrics and status
+   * Build provider-specific payload
    */
-  public getModelMetrics(modelId?: string): CustomModel | CustomModel[] {
-    if (modelId) {
-      const model = this.customModels.get(modelId);
-      if (!model) {
-        throw new Error(`Model ${modelId} not found`);
-      }
-      return model;
+  private buildProviderPayload(provider: AIProvider, model: AIModel, request: AIRequest): any {
+    const basePayload = {
+      model: model.name,
+      temperature: request.options.temperature || 0.7,
+      max_tokens: request.options.maxTokens || model.maxTokens,
+      top_p: request.options.topP,
+      frequency_penalty: request.options.frequencyPenalty,
+      presence_penalty: request.options.presencePenalty,
+      stream: request.options.stream || false,
+    };
+
+    switch (request.type) {
+      case 'chat':
+        return {
+          ...basePayload,
+          messages: request.input.messages,
+          functions: request.input.functions,
+        };
+      
+      case 'completion':
+        return {
+          ...basePayload,
+          prompt: request.input.prompt,
+        };
+      
+      case 'embedding':
+        return {
+          model: model.name,
+          input: request.input.prompt || request.input.data,
+        };
+      
+      default:
+        return basePayload;
+    }
+  }
+
+  /**
+   * Parse provider response
+   */
+  private parseProviderResponse(
+    provider: AIProvider,
+    model: AIModel,
+    request: AIRequest,
+    responseData: any,
+    responseTime: number
+  ): AIResponse {
+    const usage = responseData.usage || {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    };
+
+    const cost = this.calculateCost(provider, usage);
+
+    let output: AIResponse['output'] = {};
+
+    switch (request.type) {
+      case 'chat':
+      case 'completion':
+        output = {
+          text: responseData.choices?.[0]?.message?.content || responseData.choices?.[0]?.text,
+          messages: responseData.choices?.[0]?.message ? [responseData.choices[0].message] : undefined,
+          functionCall: responseData.choices?.[0]?.message?.function_call,
+        };
+        break;
+      
+      case 'embedding':
+        output = {
+          embeddings: responseData.data?.[0]?.embedding,
+        };
+        break;
+      
+      default:
+        output = { data: responseData };
     }
 
-    return Array.from(this.customModels.values());
-  }
-
-  /**
-   * Get training job status
-   */
-  public getTrainingJob(jobId: string): TrainingJob | undefined {
-    return this.trainingJobs.get(jobId);
-  }
-
-  /**
-   * Get all workflows
-   */
-  public getWorkflows(): AIWorkflow[] {
-    return Array.from(this.workflows.values());
-  }
-
-  /**
-   * Setup default models
-   */
-  private setupDefaultModels(): void {
-    // Create default text generation model
-    this.createCustomModel(
-      'todo-assistant',
-      'text_generation',
-      'gpt-3.5-turbo',
-      {
-        learningRate: 0.0001,
-        batchSize: 16,
-        epochs: 10,
-        maxTokens: 2048,
-        temperature: 0.7,
-        topP: 0.9,
-      }
-    );
-
-    // Create default classification model
-    this.createCustomModel(
-      'task-classifier',
-      'text_classification',
-      'bert-base-uncased',
-      {
-        learningRate: 0.00005,
-        batchSize: 32,
-        epochs: 5,
-        maxTokens: 512,
-        temperature: 0.1,
-        topP: 0.8,
-      }
-    );
-
-    logger.info('Default AI models created');
-  }
-
-  /**
-   * Execute training job (simulated)
-   */
-  private async executeTrainingJob(jobId: string): Promise<void> {
-    const job = this.trainingJobs.get(jobId);
-    if (!job) return;
-
-    job.status = 'running';
-    job.startedAt = new Date();
-    job.estimatedTimeRemaining = job.totalEpochs * 60000; // 1 minute per epoch
-
-    // Simulate training progress
-    for (let epoch = 1; epoch <= job.totalEpochs; epoch++) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds per epoch simulation
-
-      job.currentEpoch = epoch;
-      job.progress = (epoch / job.totalEpochs) * 100;
-
-      // Simulate improving metrics
-      const loss = Math.max(0.1, 2.0 - (epoch * 0.15) + (Math.random() * 0.1));
-      const accuracy = Math.min(0.95, 0.5 + (epoch * 0.04) + (Math.random() * 0.02));
-
-      job.metrics.loss.push(loss);
-      job.metrics.accuracy.push(accuracy);
-      job.metrics.validationLoss.push(loss + 0.1);
-      job.metrics.validationAccuracy.push(accuracy - 0.05);
-
-      job.logs.push({
+    return {
+      id: stringUtils.random(12),
+      requestId: request.id,
+      provider: provider.name,
+      model: model.name,
+      type: request.type,
+      output,
+      usage: {
+        promptTokens: usage.prompt_tokens,
+        completionTokens: usage.completion_tokens,
+        totalTokens: usage.total_tokens,
+        cost,
+      },
+      metadata: {
+        finishReason: responseData.choices?.[0]?.finish_reason || 'stop',
+        responseTime,
+        cached: false,
+        model: model.name,
         timestamp: new Date(),
-        level: 'info',
-        message: `Epoch ${epoch}/${job.totalEpochs} - Loss: ${loss.toFixed(4)}, Accuracy: ${accuracy.toFixed(4)}`,
-      });
-
-      job.estimatedTimeRemaining = (job.totalEpochs - epoch) * 60000;
-    }
-
-    job.status = 'completed';
-    job.completedAt = new Date();
-    job.progress = 100;
-
-    // Update model status
-    const model = this.customModels.get(job.modelId);
-    if (model) {
-      model.status = 'ready';
-      model.metrics = {
-        accuracy: job.metrics.accuracy[job.metrics.accuracy.length - 1],
-        lossValue: job.metrics.loss[job.metrics.loss.length - 1],
-      };
-      model.updatedAt = new Date();
-    }
-
-    logger.info('Training job completed', {
-      jobId,
-      modelId: job.modelId,
-      epochs: job.totalEpochs,
-      finalAccuracy: model?.metrics.accuracy,
-    });
-  }
-
-  /**
-   * Process text input
-   */
-  private async processText(
-    text: string,
-    model: CustomModel,
-    options: any
-  ): Promise<string> {
-    // Simulate text processing
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    return `Processed text: ${text.substring(0, 100)}...`;
-  }
-
-  /**
-   * Process image input
-   */
-  private async processImage(
-    image: MultiModalInput['image'],
-    model: CustomModel
-  ): Promise<MultiModalOutput['image']> {
-    // Simulate image processing
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    return {
-      url: image?.url || 'processed_image_url',
-      description: 'A processed image with detected objects',
-      objects: [
-        {
-          label: 'object',
-          confidence: 0.85,
-          boundingBox: { x: 10, y: 10, width: 100, height: 100 },
-        },
-      ],
-    };
-  }
-
-  /**
-   * Process audio input
-   */
-  private async processAudio(
-    audio: MultiModalInput['audio'],
-    model: CustomModel
-  ): Promise<MultiModalOutput['audio']> {
-    // Simulate audio processing
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    return {
-      transcript: 'Transcribed audio content',
-      sentiment: 'positive',
-      language: 'en',
-      confidence: 0.92,
-    };
-  }
-
-  /**
-   * Select best model for input
-   */
-  private selectBestModel(input: MultiModalInput): string {
-    const availableModels = Array.from(this.customModels.values())
-      .filter(model => model.status === 'ready');
-
-    if (availableModels.length === 0) {
-      throw new Error('No models available');
-    }
-
-    // Simple selection logic - in production, use more sophisticated matching
-    return availableModels[0].id;
-  }
-
-  /**
-   * Calculate overall confidence
-   */
-  private calculateOverallConfidence(results: Partial<MultiModalOutput>): number {
-    const confidences: number[] = [];
-
-    if (results.image?.objects) {
-      confidences.push(...results.image.objects.map(obj => obj.confidence));
-    }
-
-    if (results.audio?.confidence) {
-      confidences.push(results.audio.confidence);
-    }
-
-    // Add text confidence if available
-    confidences.push(0.8); // Default text confidence
-
-    return confidences.length > 0 ? 
-      confidences.reduce((sum, conf) => sum + conf, 0) / confidences.length : 0.5;
-  }
-
-  /**
-   * Get multi-modal fallback
-   */
-  private getMultiModalFallback(input: MultiModalInput): any {
-    return {
-      text: input.text ? `Fallback processing: ${input.text}` : undefined,
-      analysis: {
-        confidence: 0.3,
-        processingTime: 0,
-        modelUsed: 'fallback',
       },
     };
   }
 
   /**
-   * Sort workflow steps by dependencies
+   * Calculate cost for request
    */
-  private sortStepsByDependencies(steps: AIWorkflow['steps']): AIWorkflow['steps'] {
-    const sorted: AIWorkflow['steps'] = [];
-    const visited = new Set<string>();
-    const visiting = new Set<string>();
+  private calculateCost(provider: AIProvider, usage: any): number {
+    const inputCost = usage.prompt_tokens * provider.costPerToken.input;
+    const outputCost = usage.completion_tokens * provider.costPerToken.output;
+    return inputCost + outputCost;
+  }
 
-    const visit = (step: AIWorkflow['steps'][0]) => {
-      if (visiting.has(step.id)) {
-        throw new Error(`Circular dependency detected: ${step.id}`);
+  /**
+   * Cache response
+   */
+  private async cacheResponse(request: AIRequest, response: AIResponse): Promise<void> {
+    const cacheKey = objectUtils.hash({
+      type: request.type,
+      model: request.model,
+      input: request.input,
+      options: request.options,
+    });
+
+    const expires = new Date(Date.now() + (24 * 60 * 60 * 1000)); // 24 hours
+    this.cache.set(cacheKey, { response, expires });
+
+    monitoring.recordMetric({
+      name: 'ai.cache.set',
+      value: 1,
+      tags: {
+        model: request.model,
+        type: request.type,
+      },
+    });
+  }
+
+  /**
+   * Get cached response
+   */
+  private async getCachedResponse(request: AIRequest): Promise<AIResponse | null> {
+    const cacheKey = objectUtils.hash({
+      type: request.type,
+      model: request.model,
+      input: request.input,
+      options: request.options,
+    });
+
+    const cached = this.cache.get(cacheKey);
+    if (!cached || new Date() > cached.expires) {
+      if (cached) {
+        this.cache.delete(cacheKey);
       }
-      if (visited.has(step.id)) {
-        return;
-      }
+      return null;
+    }
 
-      visiting.add(step.id);
+    // Create new response with cached data
+    const cachedResponse: AIResponse = {
+      ...cached.response,
+      id: stringUtils.random(12),
+      requestId: request.id,
+      metadata: {
+        ...cached.response.metadata,
+        cached: true,
+        timestamp: new Date(),
+      },
+    };
 
-      // Visit dependencies first
-      for (const depId of step.dependencies) {
-        const depStep = steps.find(s => s.id === depId);
-        if (depStep) {
-          visit(depStep);
+    return cachedResponse;
+  }
+
+  /**
+   * Update provider metrics
+   */
+  private updateProviderMetrics(provider: AIProvider, response: AIResponse, responseTime: number): void {
+    const rateLimiter = this.rateLimiters.get(provider.id);
+    if (rateLimiter) {
+      rateLimiter.tokens += response.usage.totalTokens;
+    }
+
+    monitoring.recordMetric({
+      name: 'ai.provider.request',
+      value: 1,
+      tags: {
+        provider: provider.name,
+        model: response.model,
+        type: response.type,
+      },
+    });
+
+    monitoring.recordMetric({
+      name: 'ai.provider.tokens',
+      value: response.usage.totalTokens,
+      tags: {
+        provider: provider.name,
+        model: response.model,
+        type: 'total',
+      },
+    });
+
+    monitoring.recordMetric({
+      name: 'ai.provider.cost',
+      value: response.usage.cost,
+      tags: {
+        provider: provider.name,
+        model: response.model,
+      },
+    });
+
+    monitoring.recordMetric({
+      name: 'ai.provider.latency',
+      value: responseTime,
+      tags: {
+        provider: provider.name,
+        model: response.model,
+      },
+      unit: 'ms',
+    });
+  }
+
+  /**
+   * Register default providers
+   */
+  private registerProviders(): void {
+    // OpenAI Provider
+    this.registerProvider({
+      name: 'OpenAI',
+      type: 'openai',
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: process.env.OPENAI_API_KEY,
+      models: [
+        {
+          id: 'gpt-4',
+          name: 'gpt-4',
+          provider: '',
+          type: 'chat',
+          capabilities: ['chat', 'function_calling', 'code_generation'],
+          contextWindow: 8192,
+          maxTokens: 4096,
+          supportsFunctions: true,
+          supportsStreaming: true,
+          inputModalities: ['text'],
+          outputModalities: ['text'],
+          metadata: {
+            description: 'Most capable GPT-4 model',
+            version: '0613',
+            trainingCutoff: '2023-04',
+            languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'ja', 'ko', 'zh'],
+          },
+        },
+        {
+          id: 'gpt-3.5-turbo',
+          name: 'gpt-3.5-turbo',
+          provider: '',
+          type: 'chat',
+          capabilities: ['chat', 'function_calling'],
+          contextWindow: 4096,
+          maxTokens: 4096,
+          supportsFunctions: true,
+          supportsStreaming: true,
+          inputModalities: ['text'],
+          outputModalities: ['text'],
+          metadata: {
+            description: 'Fast and efficient GPT-3.5 model',
+            version: '0613',
+            trainingCutoff: '2021-09',
+            languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'ja', 'ko', 'zh'],
+          },
+        },
+        {
+          id: 'text-embedding-3-small',
+          name: 'text-embedding-3-small',
+          provider: '',
+          type: 'embedding',
+          capabilities: ['text_embedding'],
+          contextWindow: 8192,
+          maxTokens: 8192,
+          supportsFunctions: false,
+          supportsStreaming: false,
+          inputModalities: ['text'],
+          outputModalities: ['embedding'],
+          metadata: {
+            description: 'High-performance text embedding model',
+            version: '1',
+            languages: ['en', 'multilingual'],
+          },
+        },
+      ],
+      limits: {
+        requestsPerMinute: 3500,
+        tokensPerMinute: 90000,
+        maxTokens: 4096,
+      },
+      status: 'active',
+      priority: 1,
+      costPerToken: {
+        input: 0.00003,
+        output: 0.00006,
+      },
+    });
+
+    // Anthropic Provider (Claude)
+    this.registerProvider({
+      name: 'Anthropic',
+      type: 'anthropic',
+      baseUrl: 'https://api.anthropic.com/v1',
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      models: [
+        {
+          id: 'claude-3-sonnet',
+          name: 'claude-3-sonnet-20240229',
+          provider: '',
+          type: 'chat',
+          capabilities: ['chat', 'analysis', 'reasoning'],
+          contextWindow: 200000,
+          maxTokens: 4096,
+          supportsFunctions: false,
+          supportsStreaming: true,
+          inputModalities: ['text', 'image'],
+          outputModalities: ['text'],
+          metadata: {
+            description: 'Balanced performance and speed',
+            version: '3.0',
+            trainingCutoff: '2024-02',
+            languages: ['en', 'multilingual'],
+          },
+        },
+      ],
+      limits: {
+        requestsPerMinute: 1000,
+        tokensPerMinute: 80000,
+        maxTokens: 4096,
+      },
+      status: 'active',
+      priority: 2,
+      costPerToken: {
+        input: 0.000015,
+        output: 0.000075,
+      },
+    });
+
+    logger.info('Default AI providers registered');
+  }
+
+  /**
+   * Setup routing rules
+   */
+  private setupRoutingRules(): void {
+    // High priority requests to GPT-4
+    this.router.rules.push({
+      id: 'high-priority-gpt4',
+      condition: {
+        priority: 'high',
+        modelType: 'chat',
+      },
+      target: {
+        provider: Array.from(this.providers.values()).find(p => p.name === 'OpenAI')?.id || '',
+        model: 'gpt-4',
+        weight: 1,
+      },
+      enabled: true,
+    });
+
+    // Cost-optimized routing for normal priority
+    this.router.rules.push({
+      id: 'normal-priority-cost',
+      condition: {
+        priority: 'normal',
+        modelType: 'chat',
+      },
+      target: {
+        provider: Array.from(this.providers.values()).find(p => p.name === 'OpenAI')?.id || '',
+        model: 'gpt-3.5-turbo',
+        weight: 1,
+      },
+      enabled: true,
+    });
+
+    // Embedding requests to dedicated model
+    this.router.rules.push({
+      id: 'embedding-routing',
+      condition: {
+        modelType: 'embedding',
+      },
+      target: {
+        provider: Array.from(this.providers.values()).find(p => p.name === 'OpenAI')?.id || '',
+        model: 'text-embedding-3-small',
+        weight: 1,
+      },
+      enabled: true,
+    });
+
+    logger.info('AI routing rules configured');
+  }
+
+  /**
+   * Start provider monitoring
+   */
+  private startProviderMonitoring(): void {
+    setInterval(async () => {
+      for (const provider of this.providers.values()) {
+        try {
+          // Simple health check
+          if (provider.status === 'rate_limited') {
+            const rateLimiter = this.rateLimiters.get(provider.id);
+            if (rateLimiter && new Date() > rateLimiter.resetTime) {
+              provider.status = 'active';
+            }
+          }
+
+          monitoring.recordMetric({
+            name: 'ai.provider.status',
+            value: provider.status === 'active' ? 1 : 0,
+            tags: {
+              provider: provider.name,
+              status: provider.status,
+            },
+          });
+
+        } catch (error) {
+          provider.status = 'error';
+          logger.error('Provider health check failed', {
+            provider: provider.name,
+            error: String(error),
+          });
         }
       }
-
-      visiting.delete(step.id);
-      visited.add(step.id);
-      sorted.push(step);
-    };
-
-    for (const step of steps) {
-      visit(step);
-    }
-
-    return sorted;
-  }
-
-  /**
-   * Execute workflow step
-   */
-  private async executeWorkflowStep(
-    step: AIWorkflow['steps'][0],
-    input: Record<string, any>
-  ): Promise<Record<string, any>> {
-    switch (step.type) {
-      case 'preprocess':
-        return this.executePreprocessStep(step, input);
-        
-      case 'model_inference':
-        return this.executeModelInferenceStep(step, input);
-        
-      case 'postprocess':
-        return this.executePostprocessStep(step, input);
-        
-      case 'validation':
-        return this.executeValidationStep(step, input);
-        
-      default:
-        throw new Error(`Unknown step type: ${step.type}`);
-    }
-  }
-
-  private async executePreprocessStep(
-    step: AIWorkflow['steps'][0],
-    input: Record<string, any>
-  ): Promise<Record<string, any>> {
-    // Simulate preprocessing
-    await new Promise(resolve => setTimeout(resolve, 50));
-    return { preprocessed: true, ...input };
-  }
-
-  private async executeModelInferenceStep(
-    step: AIWorkflow['steps'][0],
-    input: Record<string, any>
-  ): Promise<Record<string, any>> {
-    if (!step.modelId) {
-      throw new Error('Model ID required for inference step');
-    }
-
-    const model = this.customModels.get(step.modelId);
-    if (!model || model.status !== 'ready') {
-      throw new Error(`Model ${step.modelId} not available`);
-    }
-
-    // Simulate model inference
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    return {
-      inference_result: `Result from ${model.name}`,
-      confidence: 0.85,
-      ...input,
-    };
-  }
-
-  private async executePostprocessStep(
-    step: AIWorkflow['steps'][0],
-    input: Record<string, any>
-  ): Promise<Record<string, any>> {
-    // Simulate postprocessing
-    await new Promise(resolve => setTimeout(resolve, 30));
-    return { postprocessed: true, ...input };
-  }
-
-  private async executeValidationStep(
-    step: AIWorkflow['steps'][0],
-    input: Record<string, any>
-  ): Promise<Record<string, any>> {
-    // Simulate validation
-    await new Promise(resolve => setTimeout(resolve, 20));
-    
-    const isValid = Math.random() > 0.1; // 90% validation success rate
-    if (!isValid) {
-      throw new Error('Validation failed');
-    }
-    
-    return { validated: true, ...input };
-  }
-
-  /**
-   * Start training monitoring
-   */
-  private startTrainingMonitoring(): void {
-    this.trainingInterval = setInterval(() => {
-      const activeJobs = Array.from(this.trainingJobs.values())
-        .filter(job => job.status === 'running');
-
-      logger.debug('Training monitoring', {
-        activeJobs: activeJobs.length,
-        totalJobs: this.trainingJobs.size,
-      });
-
-      // Update metrics
-      this.metrics.recordMetric('ai.training.active_jobs', activeJobs.length);
-
     }, 30000); // Every 30 seconds
   }
 
   /**
-   * Start workflow execution monitoring
+   * Start cache cleanup
    */
-  private startWorkflowExecution(): void {
-    this.workflowInterval = setInterval(async () => {
-      // Check for scheduled workflows
+  private startCacheCleanup(): void {
+    setInterval(() => {
       const now = new Date();
-      
-      for (const workflow of this.workflows.values()) {
-        if (workflow.status !== 'active') continue;
+      let cleaned = 0;
 
-        for (const trigger of workflow.triggers) {
-          if (trigger.type === 'schedule') {
-            // Check if workflow should run based on schedule
-            const shouldRun = this.shouldRunScheduledWorkflow(trigger, workflow);
-            if (shouldRun) {
-              try {
-                await this.executeWorkflow(workflow.id, {});
-              } catch (error) {
-                logger.error('Scheduled workflow execution failed', error as Error, {
-                  workflowId: workflow.id,
-                });
-              }
-            }
-          }
+      for (const [key, cached] of this.cache.entries()) {
+        if (now > cached.expires) {
+          this.cache.delete(key);
+          cleaned++;
         }
       }
 
-    }, 60000); // Every minute
+      if (cleaned > 0) {
+        logger.debug('AI cache cleaned', { cleaned });
+        
+        monitoring.recordMetric({
+          name: 'ai.cache.cleaned',
+          value: cleaned,
+          tags: {},
+        });
+      }
+
+      monitoring.recordMetric({
+        name: 'ai.cache.size',
+        value: this.cache.size,
+        tags: {},
+      });
+
+    }, 300000); // Every 5 minutes
   }
 
   /**
-   * Check if scheduled workflow should run
+   * Get AI statistics
    */
-  private shouldRunScheduledWorkflow(
-    trigger: AIWorkflow['triggers'][0],
-    workflow: AIWorkflow
-  ): boolean {
-    // Simple schedule checking - in production, use a proper scheduler
-    const now = new Date();
-    const lastRun = workflow.metrics.lastRun;
-    
-    if (!lastRun) return true;
-    
-    const timeSinceLastRun = now.getTime() - lastRun.getTime();
-    const interval = trigger.config.interval || 3600000; // Default 1 hour
-    
-    return timeSinceLastRun >= interval;
-  }
+  getAIStatistics(): {
+    providers: number;
+    models: number;
+    activeProviders: number;
+    totalRequests: number;
+    totalResponses: number;
+    cacheSize: number;
+    routingRules: number;
+    totalCost: number;
+    totalTokens: number;
+  } {
+    const activeProviders = Array.from(this.providers.values()).filter(p => p.status === 'active');
+    const totalCost = Array.from(this.responses.values()).reduce((sum, r) => sum + r.usage.cost, 0);
+    const totalTokens = Array.from(this.responses.values()).reduce((sum, r) => sum + r.usage.totalTokens, 0);
 
-  /**
-   * Shutdown AI manager
-   */
-  public shutdown(): void {
-    if (this.trainingInterval) {
-      clearInterval(this.trainingInterval);
-      this.trainingInterval = undefined;
-    }
-
-    if (this.workflowInterval) {
-      clearInterval(this.workflowInterval);
-      this.workflowInterval = undefined;
-    }
-
-    logger.info('Advanced AI manager shutdown completed');
-  }
-}
-
-/**
- * AI processing middleware
- */
-export function createAIMiddleware() {
-  const aiManager = AdvancedAIManager.getInstance();
-
-  return (context: any) => {
-    // Add AI context
-    context.ai = {
-      processMultiModal: aiManager.processMultiModal.bind(aiManager),
-      createModel: aiManager.createCustomModel.bind(aiManager),
-      startTraining: aiManager.startFineTuning.bind(aiManager),
-      executeWorkflow: aiManager.executeWorkflow.bind(aiManager),
-      getModelMetrics: aiManager.getModelMetrics.bind(aiManager),
+    return {
+      providers: this.providers.size,
+      models: this.models.size,
+      activeProviders: activeProviders.length,
+      totalRequests: this.requests.size,
+      totalResponses: this.responses.size,
+      cacheSize: this.cache.size,
+      routingRules: this.router.rules.length,
+      totalCost,
+      totalTokens,
     };
-  };
+  }
+
+  /**
+   * Get provider details
+   */
+  getProvider(providerId: string): AIProvider | undefined {
+    return this.providers.get(providerId);
+  }
+
+  /**
+   * Get model details
+   */
+  getModel(modelId: string): AIModel | undefined {
+    return this.models.get(modelId);
+  }
+
+  /**
+   * Get available models by type
+   */
+  getModelsByType(type: string): AIModel[] {
+    return Array.from(this.models.values()).filter(model => 
+      model.type === type || model.type === 'multimodal'
+    );
+  }
 }
+
+// Export singleton instance
+export const advancedAI = new AdvancedAIManager();
+
+// Export types
+export type { 
+  AIProvider, 
+  AIModel, 
+  AIRequest, 
+  AIResponse, 
+  ChatMessage, 
+  AIFunction,
+  ModelRouter,
+  RoutingRule 
+};

@@ -1,6 +1,7 @@
 import { trace, context, SpanStatusCode, SpanKind, Tracer } from '@opentelemetry/api';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { Resource } from '@opentelemetry/resources';
+import * as resources from '@opentelemetry/resources';
+const Resource = resources.Resource || resources.default?.Resource;
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
@@ -219,7 +220,7 @@ export function createGraphQLTracingPlugin() {
         willSendResponse(requestContext: any) {
           const { request, response } = requestContext;
           const span = trace.getActiveSpan();
-          
+
           if (span) {
             span.setAttributes({
               'graphql.operation.name': request.operationName,

@@ -1,19 +1,20 @@
-import { 
-  MeterProvider, 
+import {
+  MeterProvider,
   PeriodicExportingMetricReader,
   ConsoleMetricExporter,
   View,
   Aggregation,
 } from '@opentelemetry/sdk-metrics';
-import { 
-  metrics, 
-  ValueType, 
-  Counter, 
-  Histogram, 
+import {
+  metrics,
+  ValueType,
+  Counter,
+  Histogram,
   ObservableGauge,
   Meter,
 } from '@opentelemetry/api';
-import { Resource } from '@opentelemetry/resources';
+import * as resources from '@opentelemetry/resources';
+const Resource = resources.Resource || resources.default?.Resource;
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
 import { logger } from '@/logger.js';
@@ -269,7 +270,7 @@ export class MetricsSystem {
    * Calculate and record SLI metrics
    */
   recordSLI(sliType: 'availability' | 'latency' | 'error_rate', value: number): void {
-    const sliMetric = this.customMetrics.get(`sli_${sliType}`) || 
+    const sliMetric = this.customMetrics.get(`sli_${sliType}`) ||
       this.createCustomMetric(`sli_${sliType}`, 'histogram', {
         description: `Service Level Indicator for ${sliType}`,
         valueType: ValueType.DOUBLE,
@@ -325,18 +326,18 @@ export function Metric(metricName?: string) {
       try {
         const result = await originalMethod.apply(this, args);
         const duration = (Date.now() - startTime) / 1000;
-        
+
         if ('record' in histogram) {
           histogram.record(duration, {
             method: propertyKey,
             success: true,
           });
         }
-        
+
         return result;
       } catch (error) {
         const duration = (Date.now() - startTime) / 1000;
-        
+
         if ('record' in histogram) {
           histogram.record(duration, {
             method: propertyKey,
@@ -344,7 +345,7 @@ export function Metric(metricName?: string) {
             error: error instanceof Error ? error.name : 'unknown',
           });
         }
-        
+
         throw error;
       }
     };

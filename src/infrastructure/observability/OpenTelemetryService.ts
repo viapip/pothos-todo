@@ -1,6 +1,6 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { Resource } from '@opentelemetry/resources';
+import * as resources from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-otlp-grpc';
@@ -284,7 +284,7 @@ export class OpenTelemetryService extends EventEmitter {
     }
   ): Promise<T> {
     const startTime = Date.now();
-    
+
     return await this.withSpan(operationName, async (span) => {
       try {
         const result = await operation();
@@ -435,6 +435,7 @@ export class OpenTelemetryService extends EventEmitter {
   // Private helper methods
 
   private initializeSDK(): void {
+    const Resource = resources.Resource || resources.default?.Resource;
     const resource = new Resource({
       [SemanticResourceAttributes.SERVICE_NAME]: this.config.serviceName,
       [SemanticResourceAttributes.SERVICE_VERSION]: this.config.serviceVersion,
@@ -444,14 +445,14 @@ export class OpenTelemetryService extends EventEmitter {
     // Configure exporters
     const traceExporter = this.config.otlpEndpoint
       ? new OTLPTraceExporter({
-          url: `${this.config.otlpEndpoint}/v1/traces`,
-        })
+        url: `${this.config.otlpEndpoint}/v1/traces`,
+      })
       : undefined;
 
     const metricExporter = this.config.otlpEndpoint
       ? new OTLPMetricExporter({
-          url: `${this.config.otlpEndpoint}/v1/metrics`,
-        })
+        url: `${this.config.otlpEndpoint}/v1/metrics`,
+      })
       : undefined;
 
     // Initialize SDK
@@ -601,11 +602,11 @@ export class OpenTelemetryService extends EventEmitter {
 
   private createNoOpSpan(): any {
     return {
-      setAttribute: () => {},
-      setAttributes: () => {},
-      setStatus: () => {},
-      recordException: () => {},
-      end: () => {},
+      setAttribute: () => { },
+      setAttributes: () => { },
+      setStatus: () => { },
+      recordException: () => { },
+      end: () => { },
     };
   }
 

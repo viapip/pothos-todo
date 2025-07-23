@@ -19,5 +19,15 @@ export { PrismaTodoRepository } from './persistence/PrismaTodoRepository.js'
 export { PrismaTodoListRepository } from './persistence/PrismaTodoListRepository.js'
 export { PrismaUserRepository } from './persistence/PrismaUserRepository.js'
 
+// Advanced Infrastructure Services
+export * from './ai/index.js'
+export * from './security/index.js'
+export * from './edge/index.js'
+export * from './observability/index.js'
+export * from './collaboration/index.js'
+export * from './monitoring/index.js'
+export * from './cache/index.js'
+export * from './backup/index.js'
+
 // Projections (when implemented)
 // export * from './projections/index.js'

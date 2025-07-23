@@ -66,6 +66,7 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.203.0",
     "@opentelemetry/instrumentation-graphql": "^0.51.0",
     "@opentelemetry/instrumentation-http": "^0.203.0",
+    "@opentelemetry/resources": "^2.0.1",
     "@opentelemetry/sdk-node": "^0.203.0",
     "@pothos/core": "^4.7.2",
     "@pothos/plugin-dataloader": "^4.4.2",

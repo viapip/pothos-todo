@@ -1,5 +1,6 @@
 import { metrics, ValueType } from '@opentelemetry/api';
-import { Resource } from '@opentelemetry/resources';
+import * as resources from '@opentelemetry/resources';
+const Resource = resources.Resource || resources.default?.Resource;
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
@@ -385,12 +386,12 @@ export class MetricsCollector extends EventEmitter {
       if (metricData.length >= 2) {
         const recent = metricData.slice(-10);
         const older = metricData.slice(-20, -10);
-        
+
         const recentAvg = recent.reduce((sum, m) => sum + m.value, 0) / recent.length;
         const olderAvg = older.length > 0 ? older.reduce((sum, m) => sum + m.value, 0) / older.length : recentAvg;
-        
+
         const change = ((recentAvg - olderAvg) / olderAvg) * 100;
-        
+
         analysis.trends.push({
           metric: metricName,
           trend: Math.abs(change) < 5 ? 'stable' : change > 0 ? 'up' : 'down',
@@ -416,7 +417,7 @@ export class MetricsCollector extends EventEmitter {
     };
   } {
     const metricsData: Record<string, MetricSnapshot[]> = {};
-    
+
     for (const [name, snapshots] of this.metricHistory) {
       metricsData[name] = [...snapshots];
     }
@@ -624,7 +625,7 @@ export class MetricsCollector extends EventEmitter {
       if (snapshots.length >= 10) {
         const recentValues = snapshots.slice(-10).map(s => s.value);
         const variance = this.calculateVariance(recentValues);
-        
+
         if (variance > 100) { // High variance threshold
           this.emit('metric_anomaly', {
             metric: metricName,
@@ -688,7 +689,7 @@ export class MetricsCollector extends EventEmitter {
       if (conditionMet && !alertState.triggered) {
         alertState.triggered = true;
         alertState.since = Date.now();
-        
+
         this.emit('alert_triggered', {
           rule,
           value,
@@ -704,7 +705,7 @@ export class MetricsCollector extends EventEmitter {
         });
       } else if (!conditionMet && alertState.triggered) {
         alertState.triggered = false;
-        
+
         this.emit('alert_resolved', {
           rule,
           value,
@@ -761,7 +762,7 @@ export class MetricsCollector extends EventEmitter {
       const criticalAlerts = Array.from(this.alertRules.values()).filter(
         rule => rule.severity === 'critical' && this.alertStates.get(rule.id)?.triggered
       ).length;
-      
+
       systemHealth = criticalAlerts > 0 ? 'critical' : 'warning';
     }
 
@@ -784,7 +785,7 @@ export class MetricsCollector extends EventEmitter {
       this.businessMetrics = [];
       this.alertRules.clear();
       this.alertStates.clear();
-      
+
       logger.info('Metrics collector cleaned up');
     } catch (error) {
       logger.error('Error during metrics collector cleanup', error);
