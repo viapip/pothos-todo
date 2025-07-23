@@ -8,15 +8,17 @@ import { Priority, TodoStatus } from '../enums.js';
 import { Priority as PrismaPriority, TodoStatus as PrismaTodoStatus } from '@prisma/client';
 import { aiPipelineService } from '@/infrastructure/ai/AIPipelineService.js';
 import prisma from '@/lib/prisma';
+import { createTodoSchema, updateTodoSchema } from '@/validation/schemas/todo.js';
+import { nanoid } from 'nanoid';
 
 const CreateTodoInput = builder.inputType('CreateTodoInput', {
   fields: (t) => ({
-    title: t.string({ required: true }),
+    title: t.string({ required: true, validate: { minLength: 1, maxLength: 200 } }),
     priority: t.field({ type: Priority, required: false }),
     dueDate: t.field({ type: 'DateTime', required: false }),
-    tags: t.stringList({ required: false }),
+    tags: t.stringList({ required: false, validate: { maxLength: 10, items: { maxLength: 50 } } }),
     listId: t.string({ required: false }),
-    description: t.string({ required: false }),
+    description: t.string({ required: false, validate: { maxLength: 1000 } }),
     status: t.field({ type: TodoStatus, required: false }),
     completedAt: t.field({ type: 'DateTime', required: false }),
     enableAIAnalysis: t.boolean({ required: false, defaultValue: true }),
@@ -25,13 +27,13 @@ const CreateTodoInput = builder.inputType('CreateTodoInput', {
 
 const UpdateTodoInput = builder.inputType('UpdateTodoInput', {
   fields: (t) => ({
-    title: t.string({ required: false }),
+    title: t.string({ required: false, validate: { minLength: 1, maxLength: 200 } }),
     priority: t.field({ type: Priority, required: false }),
     dueDate: t.field({ type: 'DateTime', required: false }),
-    tags: t.stringList({ required: false }),
+    tags: t.stringList({ required: false, validate: { maxLength: 10, items: { maxLength: 50 } } }),
     listId: t.string({ required: false }),
     status: t.field({ type: TodoStatus, required: false }),
-    description: t.string({ required: false }),
+    description: t.string({ required: false, validate: { maxLength: 1000 } }),
     completedAt: t.field({ type: 'DateTime', required: false }),
   }),
 });
@@ -54,7 +56,17 @@ export const todoMutations = builder.mutationFields((t) => ({
       const handler = container.createTodoHandler;
       const todoRepository = container.todoRepository;
 
-      const todoId = crypto.randomUUID();
+      // Validate input with zod
+      const validatedInput = createTodoSchema.parse({
+        title: args.input.title,
+        description: args.input.description,
+        priority: args.input.priority,
+        dueDate: args.input.dueDate,
+        tags: args.input.tags,
+        todoListId: args.input.listId,
+      });
+
+      const todoId = nanoid();
       const command = CreateTodoCommand.create(
         todoId,
         args.input.title,

@@ -10,7 +10,7 @@ export class Todo extends AggregateRoot {
   private _title: string;
   private _status: PrismaTodoStatus;
   private _priority: PrismaPriority;
-  private _dueDate: Date;
+  private _dueDate: Date | null;
   private _description: string | null;
   private _completedAt: Date | null;
   private _userId: string;
@@ -26,7 +26,7 @@ export class Todo extends AggregateRoot {
     todoListId: string | null,
     status: PrismaTodoStatus = PrismaTodoStatus.PENDING,
     priority: PrismaPriority = PrismaPriority.MEDIUM,
-    dueDate: Date,
+    dueDate: Date | null = null,
     description: string | null = null,
     tags: string[] = [],
     completedAt: Date | null = null,
@@ -110,7 +110,7 @@ export class Todo extends AggregateRoot {
     return this._priority;
   }
 
-  get dueDate(): Date {
+  get dueDate(): Date | null {
     return this._dueDate;
   }
 

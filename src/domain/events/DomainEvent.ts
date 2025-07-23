@@ -1,10 +1,11 @@
 import type { JsonObject } from "@prisma/client/runtime/library";
 import { nanoid } from 'nanoid';
 
-export interface Metadata extends Record<string, unknown> {
-  title: string;
-  assigneeIds: string[];
-  requiresNotification: boolean;
+export interface Metadata extends Partial<Record<string, unknown>> {
+  title?: string;
+  userId?: string;
+  assigneeIds?: string[];
+  requiresNotification?: boolean;
 }
 
 export abstract class DomainEvent {
@@ -27,6 +28,7 @@ export abstract class DomainEvent {
     eventId: string = nanoid(),
     metadata: Metadata = {
       title: '',
+      userId: '',
       assigneeIds: [],
       requiresNotification: false
     },

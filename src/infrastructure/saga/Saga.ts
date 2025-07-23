@@ -220,7 +220,7 @@ export class CreateTodoWithNotificationsSaga extends Saga<{
     // Extract context from the triggering event
     return {
       todoId: event.aggregateId,
-      userId: event.userId || '',
+      userId: event.metadata?.userId || '',
       title: event.metadata?.title || '',
       assigneeIds: event.metadata?.assigneeIds || [],
     };

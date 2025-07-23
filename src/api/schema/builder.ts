@@ -64,6 +64,13 @@ export const builder = new SchemaBuilder<{
     client: prisma,
     dmmf: undefined,
   },
+  validation: {
+    // Validation will run for all fields by default
+    validationError: (errors, args, context, info) => {
+      // Custom error formatting
+      return new Error(`Validation failed: ${errors.map(err => err.message).join(', ')}`);
+    },
+  },
   scopeAuth: {
     authScopes: async (context: Context) => ({
       authenticated: !!context.session?.user,

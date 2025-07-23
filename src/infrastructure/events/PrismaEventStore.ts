@@ -109,7 +109,7 @@ export class PrismaEventStore implements EventStore {
       eventType,
       aggregateId,
       version,
-      createdAt
+      createdAt,
     } = event;
 
     return {
@@ -136,9 +136,10 @@ export class PrismaEventStore implements EventStore {
       event.version,
       event.id,
       {
-        title: '',
-        assigneeIds: [],
-        requiresNotification: false
+        title: 'Event #' + event.id,
+        userId: 'User #' + event.id,
+        assigneeIds: ['User #' + event.id],
+        requiresNotification: true,
       },
       event.createdAt,
       event.createdAt,

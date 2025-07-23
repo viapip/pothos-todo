@@ -4,7 +4,7 @@ import { logger } from '@/logger';
 import { PubSubManager } from '@/infrastructure/realtime/PubSubManager';
 import { Container } from '@/infrastructure/container/Container';
 import { verifySessionToken } from '@/lib/auth/session';
-import { parseCookie } from 'cookie-es';
+import { parse as parseCookie } from 'cookie-es';
 
 interface AuthenticatedPeer extends Peer {
   userId?: string;

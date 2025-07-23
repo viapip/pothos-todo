@@ -10,7 +10,7 @@ export class InMemoryEventPublisher extends EventEmitter implements EventPublish
 
   async publish(event: DomainEvent): Promise<void> {
     await this.eventStore.append(event);
-    
+
     this.emit('domainEvent', event);
     this.emit(event.eventType, event);
   }

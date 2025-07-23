@@ -130,20 +130,20 @@ export default defineWebSocketHandler({
 
     try {
       // Verify the session token
-      const { user, session } = await verifySessionToken(sessionToken);
+      const session = await verifySessionToken(sessionToken);
 
-      if (!user || !session) {
+      if (!session) {
         logger.warn('Invalid session token for GraphQL WebSocket upgrade');
         return { status: 401, statusText: 'Unauthorized' };
       }
 
       // Add user info to request headers for later access
-      request.headers.set('x-user-id', user.id);
-      request.headers.set('x-session-id', session.id);
+      request.headers.set('x-user-id', session.user.id);
+      request.headers.set('x-session-id', session.session.id);
 
       logger.info('GraphQL WebSocket upgrade authenticated', {
-        userId: user.id,
-        sessionId: session.id,
+        userId: session.user.id,
+        sessionId: session.session.id,
       });
 
       // Accept the graphql-ws protocol

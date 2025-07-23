@@ -38,8 +38,8 @@ export class PrismaTodoRepository implements TodoRepository {
     const data = {
       title: todo.title,
       status: todo.status,
-      priority: todo.priority || null,
-      dueDate: todo.dueDate || null,
+      priority: todo.priority as PrismaPriority,
+      dueDate: todo.dueDate,
       completedAt: todo.completedAt,
       userId: todo.userId,
       todoListId: todo.todoListId,
@@ -64,7 +64,6 @@ export class PrismaTodoRepository implements TodoRepository {
   private mapToDomainEntity(todoData: PrismaTodo): Todo {
     const status = todoData.status as PrismaTodoStatus;
     const priority = todoData.priority as PrismaPriority;
-    const dueDate = todoData.dueDate ? new DueDate(todoData.dueDate) : null;
 
     return new Todo(
       todoData.id,
@@ -73,10 +72,12 @@ export class PrismaTodoRepository implements TodoRepository {
       todoData.todoListId,
       status,
       priority,
-      dueDate,
+      todoData.dueDate,
+      todoData.description,
+      todoData.tags,
       todoData.completedAt,
       todoData.createdAt,
-      todoData.updatedAt
+      todoData.updatedAt,
     );
   }
 }
