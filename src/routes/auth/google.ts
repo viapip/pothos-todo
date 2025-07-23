@@ -1,4 +1,4 @@
-import { google, generateState, generateCodeVerifier, setOAuthStateCookie, setCodeVerifierCookie } from '@/lib/auth';
+import { getGoogle, generateState, generateCodeVerifier, setOAuthStateCookie, setCodeVerifierCookie } from '@/lib/auth';
 import { type H3Event } from 'h3';
 
 /**
@@ -9,14 +9,14 @@ export async function handleGoogleLogin(event: H3Event): Promise<Response> {
 	try {
 		const state = generateState();
 		const codeVerifier = generateCodeVerifier();
-		
+
 		// Create authorization URL with PKCE
-		const url = google.createAuthorizationURL(state, codeVerifier, ['openid', 'profile', 'email']);
-		
+		const url = getGoogle().createAuthorizationURL(state, codeVerifier, ['openid', 'profile', 'email']);
+
 		// Set state and code verifier cookies using H3
 		setOAuthStateCookie(event, state, 'google');
 		setCodeVerifierCookie(event, codeVerifier, 'google');
-		
+
 		// Create response with redirect
 		const response = new Response(null, {
 			status: 302,
@@ -24,7 +24,7 @@ export async function handleGoogleLogin(event: H3Event): Promise<Response> {
 				Location: url.toString(),
 			},
 		});
-		
+
 		return response;
 	} catch (error) {
 		console.error('Error initiating Google OAuth:', error);

@@ -1319,6 +1319,1052 @@ _**User**_
 
 _**Assistant**_
 
+<think><details><summary>Thought Process</summary>The error has changed from the field.getConfig issue to a new error about missing generated files. The error shows:
+
+```
+error: Cannot find module '@/graphql/__generated__/Session' from '/Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/types/Session.ts'
+```
+
+This suggests that when I removed the generated files, they're still being imported by the schema files. I need to either regenerate these files or temporarily disable the imports that reference them.
+
+Let me check what's importing from the generated files and either regenerate or disable those imports.</details></think>
+
+---
+
+The error has changed - now it's missing the generated files. Let me check what files are trying to import from the generated directory and temporarily disable them:
+
+---
+
+<details>
+            <summary>Grep search for "from.*__generated__" • **7** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/enums.ts` | L2 | `export { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/mutations/TodoListMutations.ts` | L2 | `import * as TodoListCrud from '@/graphql/__generated__/TodoList';` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/types/User.ts` | L1 | `import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/types/User.ts` | L4 | `import * as UserCrud from '@/graphql/__generated__/User';` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/types/TodoList.ts` | L1 | `import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/types/TodoList.ts` | L3 | `import * as TodoListCrud from '@/graphql/__generated__/TodoList';` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/types/Todo.ts` | L1 | `import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/types/Todo.ts` | L3 | `import * as TodoCrud from '@/graphql/__generated__/Todo';` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/types/Session.ts` | L1 | `import * as SessionCrud from '@/graphql/__generated__/Session';` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/types/User.ts` | L1 | `import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/api/schema/types/User.ts` | L4 | `import * as UserCrud from '@/graphql/__generated__/User';` |
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>I see the issue. The schema files are importing from the generated directory which I just deleted. I need to either:
+
+1. Regenerate the files, or 
+2. Temporarily disable/comment out these imports
+
+Let me first try to regenerate the files. Looking at the project structure, there might be a script to generate these files.</details></think>
+
+---
+
+Read file: package.json
+
+---
+
+<think><details><summary>Thought Process</summary>I can see there's a `db:generate` script that runs `bunx prisma generate`. This should regenerate the Prisma client and potentially the GraphQL generated files. Let me run this.</details></think>
+
+---
+
+```bash
+bun run db:generate
+```
+
+```
+bun run db:generate
+
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>The output was empty. Let me check if there are any other scripts or maybe there's a separate GraphQL generation script. Let me also check if there's a pothos configuration file that might control GraphQL generation.</details></think>
+
+---
+
+Read file: pothos.config.cjs
+
+---
+
+<think><details><summary>Thought Process</summary>I see there's a `prisma-generator-pothos-codegen` configuration. This is likely what generates the GraphQL files. Let me check if there's a specific command to run this generator.</details></think>
+
+---
+
+Read file: prisma/schema.prisma
+
+---
+
+<think><details><summary>Thought Process</summary>Great! I can see there's a `generator pothosCrud` using `prisma-generator-pothos-codegen`. This should be triggered when I run `prisma generate`. Let me try running it again to see if it generates the missing files.</details></think>
+
+---
+
+```bash
+bunx prisma generate
+```
+
+```
+% bunx prisma generate
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v6.12.0) to ./node_modules/@prisma/client in 212ms
+
+✔ Generated Pothos integration to ./node_modules/@pothos/plugin-prisma/generated.d.ts in 14ms
+
+✔ Generated Pothos inputs & crud integration to ./prisma/generated/inputs.ts in 39ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip
+-2-accelerate
+
+
+(3) ~/Projects/pothos-todo on master [!>]
+%
+```
+
+---
+
+<think><details><summary>Thought Process</summary>I see it generated files to `./prisma/generated/inputs.ts` instead of the expected `./src/graphql/__generated__/` directory. Let me check what's in the generated directory now.</details></think>
+
+---
+
+<details>
+            <summary>Listed directory src/graphql/__generated__ • **10** results</summary>
+        
+| Name |
+|-------|
+| 📄 `inputs.ts` |
+| 📄 `autocrud.ts` |
+| 📄 `utils.ts` |
+| 📄 `objects.ts` |
+| 📁 `DomainEvent` |
+| 📁 `Embedding` |
+| 📁 `Session` |
+| 📁 `Todo` |
+| 📁 `TodoList` |
+| 📁 `User` |
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Great! The files were generated successfully. Now let me check if there are any problematic `objectRef` patterns in the new generated files before trying to start the server again.</details></think>
+
+---
+
+<details>
+            <summary>Grep search for "builder\.objectType\(builder\.objectRef" • **2** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/objects.ts` | L206 | `export const BatchPayload = builder.objectType(builder.objectRef<Prisma.BatchPayload>('BatchPayload'), {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/objects.ts` | L206 | `export const BatchPayload = builder.objectType(builder.objectRef<Prisma.BatchPayload>('BatchPayload'), {` |
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+The same problematic pattern is back in the generated code. Let me fix it again.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me try starting the dev server again to see if it works.</details></think>
+
+---
+
+```bash
+bun dev
+```
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Let me wait a moment and then check the output to see if the server started successfully.</details></think>
+
+---
+
+```bash
+sleep 3 && ps aux | grep "bun run" | grep -v grep | wc -l
+```
+
+```
+% sleep 3 && ps aux | grep "bun run" | grep -v grep | wc -l
+       3
+
+(3) ~/Projects/pothos-todo on master [!>] took 3s
+%
+```
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Great! There are 3 bun processes running, which suggests the server started successfully. Let me check if there are any error logs by looking at one of the processes or trying to access the server.</details></think>
+
+---
+
+```bash
+curl -s http://localhost:3000/health || echo "Health check failed"
+```
+
+```
+% curl -s http://localhost:3000/health || echo "Health check failed"
+Health check failed
+
+(3) ~/Projects/pothos-todo on master [!>]
+%
+```
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+The health check failed, which means the server is likely still having issues. Let me check the logs by looking at the background process output or killing it and running it in the foreground to see error messages.</details></think>
+
+---
+
+```bash
+pkill -f "bun run" && sleep 1
+```
+
+```
+% pkill -f "bun run" && sleep 1
+```
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Now let me run the dev server in the foreground to see the actual error messages.</details></think>
+
+---
+
+```bash
+timeout 10 bun dev
+```
+
+```
+% timeout 10 bun dev
+zsh: correct 'timeout' to '_timeout' [nyae]? n
+zsh: command not found: timeout
+
+(3) ~/Projects/pothos-todo on master [!>]
+127 %
+```
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Let me just run bun dev directly and then interrupt it after a few seconds to see the error.</details></think>
+
+---
+
+```bash
+bun dev
+```
+
+```
+127 % bun dev
+$ bun run --watch index.ts
+Configuration value not found for key: cache, using default
+Configuration value not found for key: telemetry, using default
+Configuration value not found for key: server, using default
+Configuration value not found for key: server.oauth, using default
+1 | import { GraphQLError } from 'graphql';
+2 | export class PothosError extends GraphQLError {
+3 |     constructor(message, options) {
+4 |         super(message, options);
+            ^
+PothosSchemaError: <unnamed ref or enum> has not been implemented
+       path: undefined,
+  locations: undefined,
+ extensions: [Object: null prototype] {},
+
+      at new PothosError (/Users/aleksandrsemenov/Projects/pothos-todo/node_modules/@pothos/core/esm/errors.
+js:4:9)
+      at new PothosSchemaError (/Users/aleksandrsemenov/Projects/pothos-todo/node_modules/@pothos/core/esm/e
+rrors.js:10:9)
+      at getInputTypeRef (/Users/aleksandrsemenov/Projects/pothos-todo/node_modules/@pothos/core/esm/config-
+store.js:162:15)
+      at inputTypeFromParam (/Users/aleksandrsemenov/Projects/pothos-todo/node_modules/@pothos/core/esm/util
+s/params.js:63:29)
+      at <anonymous> (/Users/aleksandrsemenov/Projects/pothos-todo/node_modules/@pothos/core/esm/fieldUtils/
+input.js:60:23)
+      at getConfig (/Users/aleksandrsemenov/Projects/pothos-todo/node_modules/@pothos/core/esm/refs/input-fi
+eld.js:25:17)
+      at <anonymous> (/Users/aleksandrsemenov/Projects/pothos-todo/node_modules/@pothos/core/esm/config-stor
+e.js:108:57)
+      at onField (/Users/aleksandrsemenov/Projects/pothos-todo/node_modules/@pothos/core/esm/refs/input-obje
+ct.js:34:21)
+      at <anonymous> (/Users/aleksandrsemenov/Projects/pothos-todo/node_modules/@pothos/core/esm/config-stor
+e.js:102:29)
+      at prepareForBuild (/Users/aleksandrsemenov/Projects/pothos-todo/node_modules/@pothos/core/esm/config-
+store.js:202:13)
+```
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! Now I can see the exact error. It's still showing "PothosSchemaError: <unnamed ref or enum> has not been implemented". This suggests there are still unimplemented refs or enums somewhere in the schema.
+
+The error is happening at getInputTypeRef in the config store, which suggests it's likely an input type that hasn't been properly implemented. Let me check if there are any more problematic patterns or refs that need to be fixed.
+
+Let me search for any other potentially problematic patterns in the generated files.</details></think>
+
+---
+
+<details>
+            <summary>Grep search for "\.implement\(" • **1** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L127 | `⟪ 170 characters skipped ⟫serWhereInput>, false>('UserWhereInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L144 | `⟪ 226 characters skipped ⟫, false>('UserOrderByWithRelationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L164 | `⟪ 194 characters skipped ⟫ueInput>, false>('UserWhereUniqueInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L181 | `⟪ 238 characters skipped ⟫alse>('UserOrderByWithAggregationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L198 | `⟪ 250 characters skipped ⟫e>('UserScalarWhereWithAggregatesInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L212 | `⟪ 182 characters skipped ⟫WhereInput>, false>('SessionWhereInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L223 | `⟪ 238 characters skipped ⟫alse>('SessionOrderByWithRelationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L237 | `⟪ 206 characters skipped ⟫nput>, false>('SessionWhereUniqueInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L250 | `⟪ 250 characters skipped ⟫e>('SessionOrderByWithAggregationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L263 | `⟪ 262 characters skipped ⟫'SessionScalarWhereWithAggregatesInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L280 | `⟪ 186 characters skipped ⟫hereInput>, false>('TodoListWhereInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L294 | `⟪ 242 characters skipped ⟫lse>('TodoListOrderByWithRelationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L311 | `⟪ 210 characters skipped ⟫put>, false>('TodoListWhereUniqueInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L326 | `⟪ 254 characters skipped ⟫>('TodoListOrderByWithAggregationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L341 | `⟪ 266 characters skipped ⟫TodoListScalarWhereWithAggregatesInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L364 | `⟪ 170 characters skipped ⟫odoWhereInput>, false>('TodoWhereInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L384 | `⟪ 226 characters skipped ⟫, false>('TodoOrderByWithRelationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L407 | `⟪ 194 characters skipped ⟫ueInput>, false>('TodoWhereUniqueInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L428 | `⟪ 238 characters skipped ⟫alse>('TodoOrderByWithAggregationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L449 | `⟪ 250 characters skipped ⟫e>('TodoScalarWhereWithAggregatesInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L464 | `⟪ 198 characters skipped ⟫eInput>, false>('DomainEventWhereInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L476 | `⟪ 254 characters skipped ⟫>('DomainEventOrderByWithRelationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L491 | `⟪ 222 characters skipped ⟫>, false>('DomainEventWhereUniqueInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L508 | `⟪ 266 characters skipped ⟫DomainEventOrderByWithAggregationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L523 | `⟪ 278 characters skipped ⟫ainEventScalarWhereWithAggregatesInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L541 | `⟪ 190 characters skipped ⟫ereInput>, false>('EmbeddingWhereInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L556 | `⟪ 246 characters skipped ⟫se>('EmbeddingOrderByWithRelationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L575 | `⟪ 214 characters skipped ⟫ut>, false>('EmbeddingWhereUniqueInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L595 | `⟪ 258 characters skipped ⟫('EmbeddingOrderByWithAggregationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L613 | `⟪ 270 characters skipped ⟫mbeddingScalarWhereWithAggregatesInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L630 | `⟪ 174 characters skipped ⟫rCreateInput>, false>('UserCreateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L647 | `⟪ 174 characters skipped ⟫rUpdateInput>, false>('UserUpdateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L661 | `⟪ 190 characters skipped ⟫anyInput>, false>('UserCreateManyInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L675 | `⟪ 222 characters skipped ⟫>, false>('UserUpdateManyMutationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L685 | `⟪ 186 characters skipped ⟫eateInput>, false>('SessionCreateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L695 | `⟪ 186 characters skipped ⟫dateInput>, false>('SessionUpdateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L705 | `⟪ 202 characters skipped ⟫Input>, false>('SessionCreateManyInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L714 | `⟪ 234 characters skipped ⟫false>('SessionUpdateManyMutationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L727 | `⟪ 190 characters skipped ⟫ateInput>, false>('TodoListCreateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L740 | `⟪ 190 characters skipped ⟫ateInput>, false>('TodoListUpdateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L752 | `⟪ 206 characters skipped ⟫nput>, false>('TodoListCreateManyInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L763 | `⟪ 238 characters skipped ⟫alse>('TodoListUpdateManyMutationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L781 | `⟪ 174 characters skipped ⟫oCreateInput>, false>('TodoCreateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L799 | `⟪ 174 characters skipped ⟫oUpdateInput>, false>('TodoUpdateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L817 | `⟪ 190 characters skipped ⟫anyInput>, false>('TodoCreateManyInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L833 | `⟪ 222 characters skipped ⟫>, false>('TodoUpdateManyMutationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L845 | `⟪ 202 characters skipped ⟫Input>, false>('DomainEventCreateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L857 | `⟪ 202 characters skipped ⟫Input>, false>('DomainEventUpdateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L869 | `⟪ 218 characters skipped ⟫t>, false>('DomainEventCreateManyInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L881 | `⟪ 250 characters skipped ⟫e>('DomainEventUpdateManyMutationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L896 | `⟪ 194 characters skipped ⟫teInput>, false>('EmbeddingCreateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L911 | `⟪ 194 characters skipped ⟫teInput>, false>('EmbeddingUpdateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L926 | `⟪ 210 characters skipped ⟫put>, false>('EmbeddingCreateManyInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L941 | `⟪ 242 characters skipped ⟫lse>('EmbeddingUpdateManyMutationInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L959 | `⟪ 162 characters skipped ⟫ma.StringFilter>, false>('StringFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L977 | `⟪ 194 characters skipped ⟫eFilter>, false>('StringNullableFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L991 | `⟪ 170 characters skipped ⟫ateTimeFilter>, false>('DateTimeFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1000 | `⟪ 218 characters skipped ⟫r>, false>('TodoListListRelationFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1009 | `⟪ 202 characters skipped ⟫ilter>, false>('TodoListRelationFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1018 | `⟪ 214 characters skipped ⟫er>, false>('SessionListRelationFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1025 | `⟪ 262 characters skipped ⟫'TodoListOrderByRelationAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1032 | `⟪ 246 characters skipped ⟫se>('TodoOrderByRelationAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1039 | `⟪ 258 characters skipped ⟫('SessionOrderByRelationAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1053 | `⟪ 234 characters skipped ⟫false>('UserCountOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1067 | `⟪ 226 characters skipped ⟫, false>('UserMaxOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1081 | `⟪ 226 characters skipped ⟫, false>('UserMinOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1102 | `⟪ 218 characters skipped ⟫r>, false>('StringWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1123 | `⟪ 250 characters skipped ⟫e>('StringNullableWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1140 | `⟪ 226 characters skipped ⟫, false>('DateTimeWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1148 | `⟪ 210 characters skipped ⟫ter>, false>('UserScalarRelationFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1158 | `⟪ 246 characters skipped ⟫se>('SessionCountOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1168 | `⟪ 238 characters skipped ⟫alse>('SessionMaxOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1178 | `⟪ 238 characters skipped ⟫alse>('SessionMinOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1190 | `⟪ 250 characters skipped ⟫e>('TodoListCountOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1202 | `⟪ 242 characters skipped ⟫lse>('TodoListMaxOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1214 | `⟪ 242 characters skipped ⟫lse>('TodoListMinOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1224 | `⟪ 194 characters skipped ⟫sFilter>, false>('EnumTodoStatusFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1234 | `⟪ 186 characters skipped ⟫ityFilter>, false>('EnumPriorityFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1248 | `⟪ 202 characters skipped ⟫ilter>, false>('DateTimeNullableFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1259 | `⟪ 210 characters skipped ⟫ter>, false>('StringNullableListFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1267 | `⟪ 258 characters skipped ⟫('TodoListNullableScalarRelationFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1285 | `⟪ 234 characters skipped ⟫false>('TodoCountOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1302 | `⟪ 226 characters skipped ⟫, false>('TodoMaxOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1319 | `⟪ 226 characters skipped ⟫, false>('TodoMinOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1332 | `⟪ 250 characters skipped ⟫e>('EnumTodoStatusWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1345 | `⟪ 242 characters skipped ⟫lse>('EnumPriorityWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1362 | `⟪ 258 characters skipped ⟫('DateTimeNullableWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1382 | `⟪ 154 characters skipped ⟫Prisma.JsonFilter>, false>('JsonFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1396 | `⟪ 150 characters skipped ⟫r<Prisma.IntFilter>, false>('IntFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1408 | `⟪ 262 characters skipped ⟫'DomainEventCountOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1415 | `⟪ 254 characters skipped ⟫>('DomainEventAvgOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1426 | `⟪ 254 characters skipped ⟫>('DomainEventMaxOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1437 | `⟪ 254 characters skipped ⟫>('DomainEventMinOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1444 | `⟪ 254 characters skipped ⟫>('DomainEventSumOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1467 | `⟪ 210 characters skipped ⟫ter>, false>('JsonWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1486 | `⟪ 206 characters skipped ⟫lter>, false>('IntWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1494 | `⟪ 298 characters skipped ⟫gEntityTypeEntityIdCompoundUniqueInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1509 | `⟪ 254 characters skipped ⟫>('EmbeddingCountOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1516 | `⟪ 246 characters skipped ⟫se>('EmbeddingAvgOrderByAggregateInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1530 | `⟪ 246 characters skipped ⟫se>('EmbeddingMaxOrderByAggregateInput').implement({` |
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+I can see there are many `.implement()` calls in the inputs.ts file. The issue might be that some of these input types are referencing other input types that haven't been properly defined. Let me look at the specific error more carefully and try to find what's causing the "unnamed ref or enum has not been implemented" error.
+
+The error is happening in `getInputTypeRef`, which suggests it's trying to resolve an input type reference that hasn't been implemented. Let me check if there are any references to undefined enums or input types.</details></think>
+
+---
+
+<details>
+            <summary>Grep search for "Inputs\." • **0** files</summary>
+        
+No results found
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Let me check if there are any specific enum imports or usage that might be causing the issue. The error message mentions "unnamed ref or enum", so it could be an enum that's not properly defined.</details></think>
+
+---
+
+<details>
+            <summary>Grep search for "Enum" • **2** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L55 | `export const TransactionIsolationLevel = builder.enumType('TransactionIsolationLevel', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L59 | `export const UserScalarFieldEnum = builder.enumType('UserScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L63 | `export const SessionScalarFieldEnum = builder.enumType('SessionScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L67 | `export const TodoListScalarFieldEnum = builder.enumType('TodoListScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L71 | `export const TodoScalarFieldEnum = builder.enumType('TodoScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L75 | `export const DomainEventScalarFieldEnum = builder.enumType('DomainEventScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L79 | `export const EmbeddingScalarFieldEnum = builder.enumType('EmbeddingScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L83 | `export const SortOrder = builder.enumType('SortOrder', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L87 | `export const JsonNullValueInput = builder.enumType('JsonNullValueInput', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L91 | `export const QueryMode = builder.enumType('QueryMode', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L95 | `export const NullsOrder = builder.enumType('NullsOrder', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L99 | `export const JsonNullValueFilter = builder.enumType('JsonNullValueFilter', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L103 | `export const TodoStatus = builder.enumType('TodoStatus', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L107 | `export const Priority = builder.enumType('Priority', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L352 | `status: t.field({"required":false,"type":EnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L353 | `priority: t.field({"required":false,"type":EnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L395 | `status: t.field({"required":false,"type":EnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L396 | `priority: t.field({"required":false,"type":EnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L439 | `status: t.field({"required":false,"type":EnumTodoStatusWithAggregatesFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L440 | `priority: t.field({"required":false,"type":EnumPriorityWithAggregatesFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L789 | `status: t.field({"required":false,"type":EnumTodoStatusFieldUpdateOperationsInput}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L790 | `priority: t.field({"required":false,"type":EnumPriorityFieldUpdateOperationsInput}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L825 | `status: t.field({"required":false,"type":EnumTodoStatusFieldUpdateOperationsInput}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L826 | `priority: t.field({"required":false,"type":EnumPriorityFieldUpdateOperationsInput}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1218 | `export const EnumTodoStatusFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1224 | `export const EnumTodoStatusFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusFilter>, false>('EnumTodoStatusFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1225 | `fields: EnumTodoStatusFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1228 | `export const EnumPriorityFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1234 | `export const EnumPriorityFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityFilter>, false>('EnumPriorityFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1235 | `fields: EnumPriorityFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1323 | `export const EnumTodoStatusWithAggregatesFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1329 | `_min: t.field({"required":false,"type":NestedEnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1330 | `_max: t.field({"required":false,"type":NestedEnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1332 | `export const EnumTodoStatusWithAggregatesFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusWithAggregatesFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusWithAggregatesFilter>, false>('EnumTodoStatusWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1333 | `fields: EnumTodoStatusWithAggregatesFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1336 | `export const EnumPriorityWithAggregatesFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1342 | `_min: t.field({"required":false,"type":NestedEnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1343 | `_max: t.field({"required":false,"type":NestedEnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1345 | `export const EnumPriorityWithAggregatesFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityWithAggregatesFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityWithAggregatesFilter>, false>('EnumPriorityWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1346 | `fields: EnumPriorityWithAggregatesFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1749 | `export const EnumTodoStatusFieldUpdateOperationsInputFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1752 | `export const EnumTodoStatusFieldUpdateOperationsInput: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusFieldUpdateOperationsInput>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusFieldUpdateOperationsInput>, false>('EnumTodoStatusFieldUpdateOperationsInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1753 | `fields: EnumTodoStatusFieldUpdateOperationsInputFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1756 | `export const EnumPriorityFieldUpdateOperationsInputFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1759 | `export const EnumPriorityFieldUpdateOperationsInput: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityFieldUpdateOperationsInput>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityFieldUpdateOperationsInput>, false>('EnumPriorityFieldUpdateOperationsInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1760 | `fields: EnumPriorityFieldUpdateOperationsInputFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1946 | `export const NestedEnumTodoStatusFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1952 | `export const NestedEnumTodoStatusFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumTodoStatusFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumTodoStatusFilter>, false>('NestedEnumTodoStatusFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1953 | `fields: NestedEnumTodoStatusFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1956 | `export const NestedEnumPriorityFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1962 | `export const NestedEnumPriorityFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumPriorityFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumPriorityFilter>, false>('NestedEnumPriorityFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1963 | `fields: NestedEnumPriorityFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1980 | `export const NestedEnumTodoStatusWithAggregatesFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1986 | `_min: t.field({"required":false,"type":NestedEnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1987 | `_max: t.field({"required":false,"type":NestedEnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1989 | `export const NestedEnumTodoStatusWithAggregatesFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumTodoStatusWithAggregatesFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumTodoStatusWithAggregatesFilter>, false>('NestedEnumTodoStatusWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1990 | `fields: NestedEnumTodoStatusWithAggregatesFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1993 | `export const NestedEnumPriorityWithAggregatesFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1999 | `_min: t.field({"required":false,"type":NestedEnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L2000 | `_max: t.field({"required":false,"type":NestedEnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L2002 | `export const NestedEnumPriorityWithAggregatesFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumPriorityWithAggregatesFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.Ne` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L55 | `export const TransactionIsolationLevel = builder.enumType('TransactionIsolationLevel', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L59 | `export const UserScalarFieldEnum = builder.enumType('UserScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L63 | `export const SessionScalarFieldEnum = builder.enumType('SessionScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L67 | `export const TodoListScalarFieldEnum = builder.enumType('TodoListScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L71 | `export const TodoScalarFieldEnum = builder.enumType('TodoScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L75 | `export const DomainEventScalarFieldEnum = builder.enumType('DomainEventScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L79 | `export const EmbeddingScalarFieldEnum = builder.enumType('EmbeddingScalarFieldEnum', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L83 | `export const SortOrder = builder.enumType('SortOrder', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L87 | `export const JsonNullValueInput = builder.enumType('JsonNullValueInput', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L91 | `export const QueryMode = builder.enumType('QueryMode', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L95 | `export const NullsOrder = builder.enumType('NullsOrder', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L99 | `export const JsonNullValueFilter = builder.enumType('JsonNullValueFilter', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L103 | `export const TodoStatus = builder.enumType('TodoStatus', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L107 | `export const Priority = builder.enumType('Priority', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L352 | `status: t.field({"required":false,"type":EnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L353 | `priority: t.field({"required":false,"type":EnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L395 | `status: t.field({"required":false,"type":EnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L396 | `priority: t.field({"required":false,"type":EnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L439 | `status: t.field({"required":false,"type":EnumTodoStatusWithAggregatesFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L440 | `priority: t.field({"required":false,"type":EnumPriorityWithAggregatesFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L789 | `status: t.field({"required":false,"type":EnumTodoStatusFieldUpdateOperationsInput}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L790 | `priority: t.field({"required":false,"type":EnumPriorityFieldUpdateOperationsInput}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L825 | `status: t.field({"required":false,"type":EnumTodoStatusFieldUpdateOperationsInput}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L826 | `priority: t.field({"required":false,"type":EnumPriorityFieldUpdateOperationsInput}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1218 | `export const EnumTodoStatusFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1224 | `export const EnumTodoStatusFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusFilter>, false>('EnumTodoStatusFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1225 | `fields: EnumTodoStatusFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1228 | `export const EnumPriorityFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1234 | `export const EnumPriorityFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityFilter>, false>('EnumPriorityFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1235 | `fields: EnumPriorityFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1323 | `export const EnumTodoStatusWithAggregatesFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1329 | `_min: t.field({"required":false,"type":NestedEnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1330 | `_max: t.field({"required":false,"type":NestedEnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1332 | `export const EnumTodoStatusWithAggregatesFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusWithAggregatesFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusWithAggregatesFilter>, false>('EnumTodoStatusWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1333 | `fields: EnumTodoStatusWithAggregatesFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1336 | `export const EnumPriorityWithAggregatesFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1342 | `_min: t.field({"required":false,"type":NestedEnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1343 | `_max: t.field({"required":false,"type":NestedEnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1345 | `export const EnumPriorityWithAggregatesFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityWithAggregatesFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityWithAggregatesFilter>, false>('EnumPriorityWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1346 | `fields: EnumPriorityWithAggregatesFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1749 | `export const EnumTodoStatusFieldUpdateOperationsInputFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1752 | `export const EnumTodoStatusFieldUpdateOperationsInput: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusFieldUpdateOperationsInput>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumTodoStatusFieldUpdateOperationsInput>, false>('EnumTodoStatusFieldUpdateOperationsInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1753 | `fields: EnumTodoStatusFieldUpdateOperationsInputFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1756 | `export const EnumPriorityFieldUpdateOperationsInputFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1759 | `export const EnumPriorityFieldUpdateOperationsInput: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityFieldUpdateOperationsInput>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.EnumPriorityFieldUpdateOperationsInput>, false>('EnumPriorityFieldUpdateOperationsInput').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1760 | `fields: EnumPriorityFieldUpdateOperationsInputFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1946 | `export const NestedEnumTodoStatusFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1952 | `export const NestedEnumTodoStatusFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumTodoStatusFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumTodoStatusFilter>, false>('NestedEnumTodoStatusFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1953 | `fields: NestedEnumTodoStatusFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1956 | `export const NestedEnumPriorityFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1962 | `export const NestedEnumPriorityFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumPriorityFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumPriorityFilter>, false>('NestedEnumPriorityFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1963 | `fields: NestedEnumPriorityFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1980 | `export const NestedEnumTodoStatusWithAggregatesFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1986 | `_min: t.field({"required":false,"type":NestedEnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1987 | `_max: t.field({"required":false,"type":NestedEnumTodoStatusFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1989 | `export const NestedEnumTodoStatusWithAggregatesFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumTodoStatusWithAggregatesFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumTodoStatusWithAggregatesFilter>, false>('NestedEnumTodoStatusWithAggregatesFilter').implement({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1990 | `fields: NestedEnumTodoStatusWithAggregatesFilterFields,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1993 | `export const NestedEnumPriorityWithAggregatesFilterFields = (t: any) => ({` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L1999 | `_min: t.field({"required":false,"type":NestedEnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L2000 | `_max: t.field({"required":false,"type":NestedEnumPriorityFilter}),` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/graphql/__generated__/inputs.ts` | L2002 | `export const NestedEnumPriorityWithAggregatesFilter: InputObjectRef<PrismaUpdateOperationsInputFilter<Prisma.NestedEnumPriorityWithAggregatesFilter>, false> = builder.inputRef<PrismaUpdateOperationsInputFilter<Prisma.Ne` |
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+I can see the issue! There are references to types like `EnumTodoStatusFilter`, `EnumPriorityFilter`, etc. but I need to check if these are actually being referenced before they're defined. The error suggests there's an "unnamed ref" which means a type is being referenced without being properly declared first.
+
+Let me check what the actual enums definitions look like and see if there's an ordering issue.</details></think>
+
+---
+
+Read file: src/api/schema/enums.ts
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Ah! I think I found the issue. The `enums.ts` file is trying to export `TodoStatus` and `Priority` from the generated inputs, but these need to be available when the schema is building. This creates a circular dependency issue.
+
+Let me check if these enums are defined in the generated inputs file and see if they need to be defined separately to avoid this circular reference.</details></think>
+
+---
+
+Read file: src/graphql/__generated__/inputs.ts
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+I found the issue! The enums `TodoStatus` and `Priority` are defined in the generated inputs file, but the `enums.ts` file is importing from that generated file. This creates a circular dependency because:
+
+1. The generated inputs file uses the builder from `builder.ts`
+2. The `schema.ts` imports `enums.ts` 
+3. `enums.ts` imports from the generated inputs
+4. But the schema building process needs the enums to be available before the generated inputs are processed
+
+Let me fix this by moving the enum definitions to a separate file or defining them directly in the enums.ts file.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Perfect! Now I've broken the circular dependency by defining the enums directly in the `enums.ts` file instead of importing them from the generated inputs. This should resolve the "unnamed ref or enum has not been implemented" error.
+
+Let me try running the server again to see if this fixes the issue.</details></think>
+
+---
+
+```bash
+pkill -f "bun run" && sleep 1
+```
+
+```
+pkill -f "bun run" && sleep 1
+
+
+```
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Now let me try running the dev server again to see if it starts successfully.</details></think>
+
+---
+
+```bash
+bun dev
+```
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Let me wait a few seconds and then check if the server is running successfully.</details></think>
+
+---
+
+```bash
+sleep 5 && curl -s http://localhost:3000/health && echo " - Health check passed!" || echo "Health check failed"
+```
+
+```
+% sleep 5 && curl -s http://localhost:3000/health && echo " - Health check passed!" || echo "Health check fa
+ilsleep 5 && curl -s http://localhost:3000/health && echo " - Health check passed!" || echo "Health check fa
+ilsleep 5 && curl -s http://localhost:3000/health && echo " - Health check passed!" || echo "Health check fa
+ilsleep      curl                                    echo " - Health check passed!"    echo "Health check fa
+iled"
+cmdand cmdand dquote>
+```
+
+---
+
+
+
+---
+
+_**User**_
+
+$ bun run --watch index.ts
+182 |  * @param defaultValue - Default value if key not found
+183 |  * @returns Configuration value
+184 |  */
+185 | export function getConfigValue<T = any>(keyPath: string, defaultValue?: T): T {
+186 |   if (!configInstance) {
+187 |     throw new Error('Configuration not loaded. Call loadAppConfig() first.');
+                ^
+error: Configuration not loaded. Call loadAppConfig() first.
+      at getConfigValue (/Users/aleksandrsemenov/Projects/pothos-todo/src/config/index.ts:187:11)
+      at getServerConfig (/Users/aleksandrsemenov/Projects/pothos-todo/src/config/index.ts:238:15)
+      at /Users/aleksandrsemenov/Projects/pothos-todo/src/lib/auth/oauth.ts:6:22
+^C
+
+---
+
+_**Assistant**_
+
+<think><details><summary>Thought Process</summary>Now there's a new error. The configuration is not being loaded properly. The error is coming from `src/config/index.ts` where `getConfigValue` is being called before `loadAppConfig()` is called. This is happening in `src/lib/auth/oauth.ts` at line 6.
+
+Let me check the index.ts file to see how the configuration is being loaded at startup, and also check the oauth.ts file to see what's happening there.</details></think>
+
+---
+
+The error shows that the configuration isn't being loaded at startup. Let me check the main entry point and the OAuth configuration:
+
+---
+
+Read file: index.ts
+
+---
+
+<think><details><summary>Thought Process</summary>I can see that `loadAppConfig` is imported from `./src/config/index.js`, but I need to see if it's actually being called in the index.ts file. Let me read more of the file to see the initialization.</details></think>
+
+---
+
+Read file: index.ts
+
+---
+
+<think><details><summary>Thought Process</summary>I can see that `startServer()` is called at the end, but I need to see where `loadAppConfig()` is actually called. Let me check the beginning of the `startServer` function to see if the configuration is loaded there.</details></think>
+
+---
+
+<details>
+            <summary>Grep search for "loadAppConfig" • **4** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/index.ts` | L4 | `loadAppConfig,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/index.ts` | L29 | `await loadAppConfig();` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/config/index.ts` | L14 | `export async function loadAppConfig(reload = false): Promise<AppConfig> {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/config/index.ts` | L186 | `throw new Error('Configuration not loaded. Call loadAppConfig() first.');` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/config/index.ts` | L407 | `return await loadAppConfig();` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/config/index.ts` | L412 | `loadAppConfig,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/index.ts` | L4 | `loadAppConfig,` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/index.ts` | L29 | `await loadAppConfig();` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/config/index.ts` | L14 | `export async function loadAppConfig(reload = false): Promise<AppConfig> {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/config/index.ts` | L186 | `throw new Error('Configuration not loaded. Call loadAppConfig() first.');` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/config/index.ts` | L407 | `return await loadAppConfig();` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/config/index.ts` | L412 | `loadAppConfig,` |
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Good! I can see that `loadAppConfig()` is called on line 29 of `index.ts`. Let me check what happens around line 29 to understand the order of operations and why the configuration might not be loaded when the OAuth module is accessed.</details></think>
+
+---
+
+Read file: index.ts
+
+---
+
+<think><details><summary>Thought Process</summary>Now let me check the `src/lib/auth/oauth.ts` file to see what's happening at line 6 that's causing the configuration error. The issue is probably that the OAuth file is being imported and executed before `loadAppConfig()` is called.</details></think>
+
+---
+
+Read file: src/lib/auth/oauth.ts
+
+---
+
+<think><details><summary>Thought Process</summary>That's the problem! The OAuth configuration is being called at the module level (lines 5-6) when the file is imported, but this happens before `loadAppConfig()` is called in the main `startServer()` function. The module-level execution tries to get config values before the configuration is loaded.
+
+The fix is to move the configuration access into functions that are called after the configuration is loaded, or defer the configuration reading until it's actually needed.
+
+Let me fix this by wrapping the configuration access in functions that will be called later.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>I need to finish the fix. There are some remaining references to the old variables and I need to update the rest of the file to use the new `getOAuthClients()` function. Let me also need to check what the GitHub constructor requires.</details></think>
+
+---
+
+Read file: src/lib/auth/oauth.ts
+
+---
+
+<think><details><summary>Thought Process</summary>I see the issue. The exports are being called immediately when the module loads, which will trigger the lazy initialization too early. Let me fix this by making the exports into getter functions as well.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>Let me read the current file content to see what it looks like after my previous edit, then make the correct changes.</details></think>
+
+---
+
+Read file: src/lib/auth/oauth.ts
+
+---
+
+<think><details><summary>Thought Process</summary>I can see that GitHub constructor also has the redirect URI parameter. But there's still the issue with the exports calling `getOAuthClients()` immediately. Let me fix this by removing the immediate calls and changing them to getter functions.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>It seems GitHub constructor also requires 3 arguments. Let me check the Arctic documentation or fix by adding the redirect URI back.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Now I need to fix the export issue. Let me change the immediate exports to getter functions.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Now I need to update any usage of these exports in other files to use the new getter functions instead of the constants. Let me find where `google` and `github` from this module are used.</details></think>
+
+---
+
+<details>
+            <summary>Grep search for "from.*oauth.*import.*google" • **0** files</summary>
+        
+No results found
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>Let me search more broadly for imports from the oauth module.</details></think>
+
+---
+
+<details>
+            <summary>Grep search for "from.*oauth" • **1** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/lib/auth/index.ts` | L32 | `} from './oauth';` |
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Let me check what's being imported from oauth in the auth index file.</details></think>
+
+---
+
+Read file: src/lib/auth/index.ts
+
+---
+
+<think><details><summary>Thought Process</summary>Let me see the beginning of the import to see what's being imported from oauth.</details></think>
+
+---
+
+Read file: src/lib/auth/index.ts
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Now I need to update the export of `google` and `github` in the auth index file to use the new getter functions.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Now I need to find where `google` and `github` are used in the route handlers and update them to use the new getter functions.</details></think>
+
+---
+
+<details>
+            <summary>Grep search for "google\.|github\." • **4** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/routes/auth/google.ts` | L13 | `const url = google.createAuthorizationURL(state, codeVerifier, ['openid', 'profile', 'email']);` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/routes/auth/github-callback.ts` | L33 | `tokens = await github.validateAuthorizationCode(code);` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/routes/auth/github-callback.ts` | L42 | `const userData = await ofetch('https://api.github.com/user', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/routes/auth/github-callback.ts` | L55 | `const emails = await ofetch('https://api.github.com/user/emails', {` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/routes/auth/google-callback.ts` | L34 | `tokens = await google.validateAuthorizationCode(code, codeVerifier);` |
+| `file:///Users/aleksandrsemenov/Projects/pothos-todo/src/routes/auth/github.ts` | L12 | `const url = github.createAuthorizationURL(state, ['user:email']);` |
+
+</details>
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Now I need to update all these usages to use the new getter functions. Let me start with the Google route files.</details></think>
+
+---
+
+Read file: src/routes/auth/google.ts
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+I need to update the import and usage in each file. Let me start with the Google auth files.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Now I need to update the usage of `google` to use the getter function.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Now let me update the Google callback route.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Let me get the exact line and fix it.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+I need to update the usage in the Google callback as well. Let me find line 35 and fix it.</details></think>
+
+---
+
+Read file: src/routes/auth/google-callback.ts
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Let me update this usage as well.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Now let me fix the GitHub auth files as well.</details></think>
+
+---
+
+
+
+---
+
+<think><details><summary>Thought Process</summary>
+
+
+
+Let me update the usage in the GitHub route as well.</details></think>
+
+---
+
+
+
+---
+
+_**User**_
+
+continue
+
+---
+
+_**Assistant**_
+
 
 
 ---

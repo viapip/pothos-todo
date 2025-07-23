@@ -3,8 +3,13 @@ import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'pathe';
 import { getCurrentConfig } from './config/index.js';
 import { isDevelopment } from 'std-env';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { nanoid } from 'nanoid';
 
 export type Logger = ConsolaInstance;
+
+// AsyncLocalStorage for correlation IDs
+const correlationStore = new AsyncLocalStorage<{ correlationId: string; requestId?: string }>();
 
 export function createLogger(): ConsolaInstance {
   // Get logger configuration
@@ -51,6 +56,7 @@ export function createLogger(): ConsolaInstance {
         log: (logObj: any) => {
           if (!loggerConfig.dir || !loggerConfig.files) return;
           
+          const context = correlationStore.getStore();
           const timestamp = new Date().toISOString();
           const logEntry = {
             timestamp,
@@ -60,6 +66,8 @@ export function createLogger(): ConsolaInstance {
             message: logObj.args.join(' '),
             service: loggerConfig.service,
             version: loggerConfig.version,
+            correlationId: context?.correlationId,
+            requestId: context?.requestId,
             ...(logObj.additional || {}),
           };
 
@@ -110,3 +118,24 @@ export const {
   ready,
   box,
 } = logger;
+
+// Correlation ID management
+export function withCorrelationId<T>(
+  correlationId: string,
+  requestId: string | undefined,
+  fn: () => T
+): T {
+  return correlationStore.run({ correlationId, requestId }, fn);
+}
+
+export function getCorrelationId(): string | undefined {
+  return correlationStore.getStore()?.correlationId;
+}
+
+export function getRequestId(): string | undefined {
+  return correlationStore.getStore()?.requestId;
+}
+
+export function generateCorrelationId(): string {
+  return nanoid(16);
+}

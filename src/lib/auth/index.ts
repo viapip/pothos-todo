@@ -21,8 +21,8 @@ export {
 
 // OAuth providers
 export {
-	google,
-	github,
+	getGoogle,
+	getGitHub,
 	generateState,
 	generateCodeVerifier,
 	setOAuthStateCookie,

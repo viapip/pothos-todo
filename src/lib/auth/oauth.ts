@@ -2,36 +2,44 @@ import { Google, GitHub } from 'arctic';
 import { setCookie, getCookie, type H3Event } from 'h3';
 import { getServerConfig, getOAuthConfig, isProduction } from '@/config/index.js';
 
-// Get configuration values using the centralized config system
-const serverConfig = getServerConfig();
-const oauthConfig = getOAuthConfig();
+// Lazy initialization to avoid accessing config before it's loaded
+let _google: Google | null = null;
+let _github: GitHub | null = null;
 
-// OAuth configuration from centralized config
-const GOOGLE_CLIENT_ID = oauthConfig.google.clientId;
-const GOOGLE_CLIENT_SECRET = oauthConfig.google.clientSecret;
-const GOOGLE_REDIRECT_URI = oauthConfig.google.redirectUri;
+function getOAuthClients() {
+	if (!_google || !_github) {
+		const serverConfig = getServerConfig();
+		const oauthConfig = getOAuthConfig();
 
-const GITHUB_CLIENT_ID = oauthConfig.github.clientId;
-const GITHUB_CLIENT_SECRET = oauthConfig.github.clientSecret;
-const GITHUB_REDIRECT_URI = oauthConfig.github.redirectUri;
+		_google = new Google(
+			oauthConfig.google.clientId,
+			oauthConfig.google.clientSecret,
+			oauthConfig.google.redirectUri
+		);
+
+		_github = new GitHub(
+			oauthConfig.github.clientId,
+			oauthConfig.github.clientSecret,
+			oauthConfig.github.redirectUri
+		);
+	}
+
+	return { google: _google, github: _github };
+}
 
 /**
  * Google OAuth provider configuration
  */
-export const google = new Google(
-	GOOGLE_CLIENT_ID,
-	GOOGLE_CLIENT_SECRET,
-	GOOGLE_REDIRECT_URI
-);
+export function getGoogle(): Google {
+	return getOAuthClients().google;
+}
 
 /**
  * GitHub OAuth provider configuration  
  */
-export const github = new GitHub(
-	GITHUB_CLIENT_ID,
-	GITHUB_CLIENT_SECRET,
-	GITHUB_REDIRECT_URI
-);
+export function getGitHub(): GitHub {
+	return getOAuthClients().github;
+}
 
 /**
  * Generate state parameter for OAuth (CSRF protection)
@@ -62,7 +70,7 @@ export function generateCodeVerifier(): string {
  */
 export function setOAuthStateCookie(event: H3Event, state: string, provider: 'google' | 'github'): void {
 	const cookieName = `${provider}_oauth_state`;
-	
+
 	setCookie(event, cookieName, state, {
 		httpOnly: true,
 		sameSite: 'lax',
@@ -77,7 +85,7 @@ export function setOAuthStateCookie(event: H3Event, state: string, provider: 'go
  */
 export function setCodeVerifierCookie(event: H3Event, codeVerifier: string, provider: 'google'): void {
 	const cookieName = `${provider}_code_verifier`;
-	
+
 	setCookie(event, cookieName, codeVerifier, {
 		httpOnly: true,
 		sameSite: 'lax',

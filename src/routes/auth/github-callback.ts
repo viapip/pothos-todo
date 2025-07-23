@@ -1,4 +1,4 @@
-import { github, getOAuthState, validateOAuthState, handleGitHubOAuth, generateSessionToken, createSession, setSessionTokenCookie, type GitHubUserInfo } from '@/lib/auth';
+import { getGitHub, getOAuthState, validateOAuthState, handleGitHubOAuth, generateSessionToken, createSession, setSessionTokenCookie, type GitHubUserInfo } from '@/lib/auth';
 import type { OAuth2Tokens } from 'arctic';
 import { type H3Event } from 'h3';
 import { ofetch } from 'ofetch';
@@ -12,31 +12,31 @@ export async function handleGitHubCallback(event: H3Event): Promise<Response> {
 		const url = new URL(event.node.req.url!, `http://${event.node.req.headers.host}`);
 		const code = url.searchParams.get('code');
 		const state = url.searchParams.get('state');
-		
+
 		// Validate required parameters
 		if (!code || !state) {
 			console.error('Missing code or state parameters');
 			return new Response('Bad Request: Missing parameters', { status: 400 });
 		}
-		
+
 		// Get stored state from H3 cookies
 		const storedState = getOAuthState(event, 'github');
-		
+
 		// Validate state (CSRF protection)
 		if (!validateOAuthState(state, storedState)) {
 			console.error('Invalid state');
 			return new Response('Bad Request: Invalid state', { status: 400 });
 		}
-		
-		// Exchange authorization code for tokens
+
+		// Exchange authorization code for tokens	
 		let tokens: OAuth2Tokens;
 		try {
-			tokens = await github.validateAuthorizationCode(code);
+			tokens = await getGitHub().validateAuthorizationCode(code);
 		} catch (error) {
 			console.error('Error validating authorization code:', error);
 			return new Response('Bad Request: Invalid authorization code', { status: 400 });
 		}
-		
+
 		// Fetch user information from GitHub API
 		let githubUserInfo: GitHubUserInfo;
 		try {
@@ -48,7 +48,7 @@ export async function handleGitHubCallback(event: H3Event): Promise<Response> {
 				retry: 2,
 				timeout: 5000,
 			});
-			
+
 			// Fetch user email if not public
 			let email = userData.email;
 			if (!email) {
@@ -67,11 +67,11 @@ export async function handleGitHubCallback(event: H3Event): Promise<Response> {
 					// Email fetch failed, but continue if we have other data
 				}
 			}
-			
+
 			if (!email) {
 				return new Response('Bad Request: No email found', { status: 400 });
 			}
-			
+
 			githubUserInfo = {
 				id: userData.id,
 				login: userData.login,
@@ -83,7 +83,7 @@ export async function handleGitHubCallback(event: H3Event): Promise<Response> {
 			console.error('Error fetching GitHub user data:', error);
 			return new Response('Bad Request: Failed to fetch user data', { status: 400 });
 		}
-		
+
 		// Handle user creation/authentication
 		let user;
 		try {
@@ -92,14 +92,14 @@ export async function handleGitHubCallback(event: H3Event): Promise<Response> {
 			console.error('Error handling GitHub OAuth:', error);
 			return new Response('Internal Server Error: User creation failed', { status: 500 });
 		}
-		
+
 		// Create new session
 		const sessionToken = generateSessionToken();
 		const session = await createSession(sessionToken, user.id);
-		
+
 		// Set session cookie using H3
 		setSessionTokenCookie(event, sessionToken, session.expiresAt);
-		
+
 		// Create success response with redirect
 		const response = new Response(null, {
 			status: 302,
@@ -107,7 +107,7 @@ export async function handleGitHubCallback(event: H3Event): Promise<Response> {
 				Location: '/', // Redirect to app homepage
 			},
 		});
-		
+
 		return response;
 	} catch (error) {
 		console.error('Unexpected error in GitHub callback:', error);

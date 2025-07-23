@@ -23,9 +23,27 @@ import { CacheManager } from "./src/infrastructure/cache/CacheManager.js";
 import { Container } from "./src/infrastructure/container/Container.js";
 import { websocketHandler } from "./src/routes/websocket.js";
 import { graphqlWebSocketHandler } from "./src/routes/graphql-ws.js";
+import { env } from "./src/config/env.validation.js";
+import { 
+  handleHealthCheck, 
+  handleLivenessProbe, 
+  handleReadinessProbe,
+  handleDetailedHealthCheck 
+} from "./src/routes/health.js";
+import { correlationIdMiddleware, withCorrelation } from "./src/middleware/correlationId.js";
+import { security } from "./src/middleware/security.js";
+import { errorHandler } from "./src/middleware/errorHandler.js";
+import { rateLimiters } from "./src/middleware/rateLimit.js";
 
 async function startServer() {
   try {
+    // Environment variables are validated on import
+    logger.info("Environment variables validated successfully", {
+      nodeEnv: env.NODE_ENV,
+      port: env.PORT,
+      host: env.HOST,
+    });
+
     // Load configuration
     await loadAppConfig();
     const serverConfig = getServerConfig();
@@ -71,9 +89,34 @@ async function startServer() {
     // Create H3 app
     const app = createApp();
 
-    // Global middleware for request logging
+    // Global error handler
     app.use(
       eventHandler(async (event) => {
+        try {
+          await event.next?.();
+        } catch (error) {
+          return errorHandler(error, event);
+        }
+      })
+    );
+
+    // Security middleware
+    app.use(
+      eventHandler((event) => {
+        security()(event);
+      })
+    );
+
+    // Correlation ID middleware
+    app.use(
+      eventHandler((event) => {
+        correlationIdMiddleware(event);
+      })
+    );
+
+    // Global middleware for request logging with correlation
+    app.use(
+      eventHandler(withCorrelation(async (event) => {
         const startTime = Date.now();
         event.context.startTime = startTime;
 
@@ -81,8 +124,10 @@ async function startServer() {
           method: event.node.req.method,
           url: event.node.req.url,
           userAgent: event.node.req.headers["user-agent"],
+          correlationId: event.context.correlationId,
+          requestId: event.context.requestId,
         });
-      })
+      }))
     );
 
     // Session middleware
@@ -103,12 +148,42 @@ async function startServer() {
       })
     );
 
-    // Auth routes with native H3 event handling
+    // Health check routes
+    app.use(
+      "/health",
+      eventHandler(async (event) => {
+        return await handleHealthCheck(event);
+      })
+    );
+
+    app.use(
+      "/health/live",
+      eventHandler(async (event) => {
+        return await handleLivenessProbe(event);
+      })
+    );
+
+    app.use(
+      "/health/ready",
+      eventHandler(async (event) => {
+        return await handleReadinessProbe(event);
+      })
+    );
+
+    app.use(
+      "/health/detailed",
+      eventHandler(async (event) => {
+        return await handleDetailedHealthCheck(event);
+      })
+    );
+
+    // Auth routes with native H3 event handling and rate limiting
     app.use(
       "/auth/google",
-      eventHandler(async (event) => {
+      eventHandler(withCorrelation(async (event) => {
+        await rateLimiters.auth(event);
         return await handleGoogleLogin(event);
-      })
+      }))
     );
 
     app.use(
@@ -194,6 +269,12 @@ async function startServer() {
           "/auth/github/callback",
           "/auth/logout",
           "/auth/logout/all",
+        ],
+        healthEndpoints: [
+          "/health",
+          "/health/live",
+          "/health/ready",
+          "/health/detailed",
         ],
       });
     });
