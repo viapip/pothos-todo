@@ -131,8 +131,6 @@ builder.objectType(Error, {
   }),
 });
 
-// Apply performance plugin
-performancePlugin(builder);
 
 export default builder;
 export type SchemaBuilder = typeof builder;

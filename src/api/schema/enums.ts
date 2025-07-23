@@ -1,3 +1,5 @@
 import { builder } from './builder.js';
 
-export { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';
+// Re-export enums from generated inputs
+// These are automatically generated from Prisma schema
+export { TodoStatus, Priority } from '@/graphql/__generated__/inputs.js';

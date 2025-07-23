@@ -10,6 +10,9 @@ import { CompleteTodoHandler } from './CompleteTodoHandler.js';
 import { DeleteTodoHandler } from './DeleteTodoHandler.js';
 import type { TodoRepository } from '../../domain/repositories/TodoRepository.js';
 import { logger } from '@/logger';
+import { Priority as PrismaPriority } from '@prisma/client';
+import { TodoStatus as PrismaTodoStatus } from '@prisma/client';
+import { DueDate } from '../../domain/value-objects/DueDate.js';
 
 export interface ExecuteNLPCommandCommand {
   command: string;
@@ -35,7 +38,7 @@ export class ExecuteNLPCommandHandler {
     private completeTodoHandler: CompleteTodoHandler,
     private deleteTodoHandler: DeleteTodoHandler,
     private todoRepository: TodoRepository
-  ) {}
+  ) { }
 
   async handle(command: ExecuteNLPCommandCommand): Promise<NLPCommandResult> {
     try {
@@ -107,19 +110,19 @@ export class ExecuteNLPCommandHandler {
       throw new Error('Title is required to create a todo');
     }
 
-    const createCommand: CreateTodoCommand = {
+    const createCommand: CreateTodoCommand = CreateTodoCommand.create(
+      parsed.parameters.todoId as string,
+      parsed.parameters.title,
       userId,
-      title: parsed.parameters.title,
-      description: parsed.parameters.description || null,
-      priority: (parsed.parameters.priority?.toUpperCase() as any) || 'MEDIUM',
-      dueDate: parsed.parameters.dueDate || null,
-      tags: parsed.parameters.tags || [],
-      listId: parsed.parameters.listId
-    };
+      parsed.parameters.listId as string | null,
+      parsed.parameters.priority as PrismaPriority,
+      parsed.parameters.dueDate as Date,
+      parsed.parameters.tags as string[] || [],
+      parsed.parameters.status as PrismaTodoStatus,
+    );
 
-    const todoId = await this.createTodoHandler.handle(createCommand);
-    const todo = await this.todoRepository.findById(todoId);
-    
+    const todo = await this.createTodoHandler.handle(createCommand);
+
     return todo;
   }
 
@@ -127,30 +130,34 @@ export class ExecuteNLPCommandHandler {
     if (!parsed.parameters.todoId) {
       // Try to find a todo by title if no ID is provided
       const todos = await this.todoRepository.findByUserId(userId);
-      const matchingTodo = todos.find(t => 
+      const matchingTodo = todos.find(t =>
         parsed.parameters.title && t.title.toLowerCase().includes(parsed.parameters.title.toLowerCase())
       );
-      
+
       if (!matchingTodo) {
         throw new Error('Could not find the todo to update. Please be more specific.');
       }
-      
+
       parsed.parameters.todoId = matchingTodo.id;
     }
 
-    const updateCommand: UpdateTodoCommand = {
-      todoId: parsed.parameters.todoId,
+    const updateCommand: UpdateTodoCommand = UpdateTodoCommand.create(
+      parsed.parameters.todoId,
       userId,
-      title: parsed.parameters.title,
-      description: parsed.parameters.description,
-      priority: parsed.parameters.priority?.toUpperCase() as any,
-      dueDate: parsed.parameters.dueDate,
-      tags: parsed.parameters.tags
-    };
+      {
+        title: parsed.parameters.title,
+        priority: parsed.parameters.priority as PrismaPriority | null,
+        dueDate: parsed.parameters.dueDate as Date,
+        todoListId: parsed.parameters.listId as string | null,
+        tags: parsed.parameters.tags as string[] || [],
+        status: parsed.parameters.status as PrismaTodoStatus,
+        updatedBy: userId,
+      }
+    );
 
     await this.updateTodoHandler.handle(updateCommand);
     const todo = await this.todoRepository.findById(parsed.parameters.todoId);
-    
+
     return todo;
   }
 
@@ -158,25 +165,25 @@ export class ExecuteNLPCommandHandler {
     if (!parsed.parameters.todoId) {
       // Try to find a todo by title if no ID is provided
       const todos = await this.todoRepository.findByUserId(userId);
-      const matchingTodo = todos.find(t => 
+      const matchingTodo = todos.find(t =>
         parsed.parameters.title && t.title.toLowerCase().includes(parsed.parameters.title.toLowerCase())
       );
-      
+
       if (!matchingTodo) {
         throw new Error('Could not find the todo to complete. Please be more specific.');
       }
-      
+
       parsed.parameters.todoId = matchingTodo.id;
     }
 
-    const completeCommand: CompleteTodoCommand = {
-      id: parsed.parameters.todoId,
+    const completeCommand: CompleteTodoCommand = CompleteTodoCommand.create(
+      parsed.parameters.todoId,
       userId
-    };
+    );
 
     await this.completeTodoHandler.handle(completeCommand);
     const todo = await this.todoRepository.findById(parsed.parameters.todoId);
-    
+
     return todo;
   }
 
@@ -184,55 +191,55 @@ export class ExecuteNLPCommandHandler {
     if (!parsed.parameters.todoId) {
       // Try to find a todo by title if no ID is provided
       const todos = await this.todoRepository.findByUserId(userId);
-      const matchingTodo = todos.find(t => 
+      const matchingTodo = todos.find(t =>
         parsed.parameters.title && t.title.toLowerCase().includes(parsed.parameters.title.toLowerCase())
       );
-      
+
       if (!matchingTodo) {
         throw new Error('Could not find the todo to delete. Please be more specific.');
       }
-      
+
       parsed.parameters.todoId = matchingTodo.id;
     }
 
-    const deleteCommand: DeleteTodoCommand = {
-      id: parsed.parameters.todoId,
+    const deleteCommand: DeleteTodoCommand = DeleteTodoCommand.create(
+      parsed.parameters.todoId,
       userId
-    };
+    );
 
     await this.deleteTodoHandler.handle(deleteCommand);
-    
+
     return { id: parsed.parameters.todoId, deleted: true };
   }
 
   private async handleList(parsed: ParsedCommand, userId: string): Promise<any> {
     const todos = await this.todoRepository.findByUserId(userId);
-    
+
     // Apply filters if provided
     let filteredTodos = todos;
-    
+
     if (parsed.parameters.filter) {
       if (parsed.parameters.filter.status) {
-        filteredTodos = filteredTodos.filter(t => 
-          t.status.value.toLowerCase() === parsed.parameters.filter!.status!.toLowerCase()
+        filteredTodos = filteredTodos.filter(t =>
+          t.status.toLowerCase() === parsed.parameters.filter!.status!.toLowerCase()
         );
       }
-      
+
       if (parsed.parameters.filter.priority) {
-        filteredTodos = filteredTodos.filter(t => 
-          t.priority.value.toLowerCase() === parsed.parameters.filter!.priority!.toLowerCase()
+        filteredTodos = filteredTodos.filter(t =>
+          t.priority?.toLowerCase() === parsed.parameters.filter!.priority!.toLowerCase()
         );
       }
-      
+
       if (parsed.parameters.filter.search) {
         const searchTerm = parsed.parameters.filter.search.toLowerCase();
-        filteredTodos = filteredTodos.filter(t => 
+        filteredTodos = filteredTodos.filter(t =>
           t.title.toLowerCase().includes(searchTerm) ||
-          (t.description && t.description.toLowerCase().includes(searchTerm))
+          (t.tags && t.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
         );
       }
     }
-    
+
     return filteredTodos;
   }
 }

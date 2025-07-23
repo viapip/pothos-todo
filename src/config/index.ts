@@ -1,4 +1,6 @@
 import { loadConfig, watchConfig } from 'c12';
+import { defu } from 'defu';
+import { isDevelopment as isDevEnv, isProduction as isProdEnv, isTest as isTestEnv } from 'std-env';
 import type { AppConfig, ConfigResult, ConfigWatchOptions } from '../../config/types.js';
 
 // Configuration loader instance
@@ -41,9 +43,9 @@ export async function loadAppConfig(reload = false): Promise<AppConfig> {
         },
         env: {
           name: process.env.NODE_ENV || 'development',
-          isDevelopment: process.env.NODE_ENV === 'development',
-          isProduction: process.env.NODE_ENV === 'production',
-          isTest: process.env.NODE_ENV === 'test',
+          isDevelopment: isDevEnv,
+          isProduction: isProdEnv,
+          isTest: isTestEnv,
         },
       },
     });
@@ -218,7 +220,7 @@ export function getConfigValueSafe<T>(keyPath: string, defaultValue: T): T {
  * Get server configuration
  */
 export function getServerConfig() {
-  return getConfigValueSafe('server', {
+  const defaults = {
     port: 4000,
     host: 'localhost',
     cors: {
@@ -232,27 +234,29 @@ export function getServerConfig() {
       secure: false,
       sameSite: 'lax' as const,
     },
-  });
+  };
+  return defu(getConfigValue('server', {}), defaults);
 }
 
 /**
  * Get session configuration
  */
 export function getSessionConfig() {
-  return getConfigValueSafe('server.session', {
+  const defaults = {
     secret: 'fallback-key',
     name: 'h3-session',
     maxAge: 60 * 60 * 24 * 7,
     secure: false,
     sameSite: 'lax' as const,
-  });
+  };
+  return defu(getConfigValue('server.session', {}), defaults);
 }
 
 /**
  * Get OAuth configuration
  */
 export function getOAuthConfig() {
-  return getConfigValueSafe('server.oauth', {
+  const defaults = {
     google: {
       clientId: '',
       clientSecret: '',
@@ -263,26 +267,29 @@ export function getOAuthConfig() {
       clientSecret: '',
       redirectUri: 'http://localhost:4000/auth/github/callback',
     },
-  });
+  };
+  return defu(getConfigValue('server.oauth', {}), defaults);
 }
 
 /**
  * Get database configuration
  */
 export function getDatabaseConfig() {
-  return getConfigValueSafe('database', {
+  const defaults = {
     url: 'postgresql://postgres:password@localhost:5432/pothos_todo',
-  });
+  };
+  return defu(getConfigValue('database', {}), defaults);
 }
 
 /**
  * Get logger configuration
  */
 export function getLoggerConfig() {
-  return getConfigValueSafe('logger', {
+  const defaults = {
     level: 'info' as const,
     service: 'pothos-todo',
-  });
+  };
+  return defu(getConfigValue('logger', {}), defaults);
 }
 
 /**
@@ -324,7 +331,7 @@ export function getEnvironmentConfig() {
  * Get telemetry configuration
  */
 export function getTelemetryConfig() {
-  return getConfigValueSafe('telemetry', {
+  const defaults = {
     enabled: false,
     serviceName: 'pothos-todo-api',
     serviceVersion: '1.0.0',
@@ -332,14 +339,15 @@ export function getTelemetryConfig() {
     exporterUrl: undefined,
     exporterHeaders: undefined,
     samplingRate: 1.0,
-  });
+  };
+  return defu(getConfigValue('telemetry', {}), defaults);
 }
 
 /**
  * Get cache configuration
  */
 export function getCacheConfig() {
-  return getConfigValueSafe('cache', {
+  const defaults = {
     enabled: true,
     redis: {
       host: 'localhost',
@@ -349,14 +357,15 @@ export function getCacheConfig() {
       keyPrefix: 'pothos:',
       ttl: 3600,
     },
-  });
+  };
+  return defu(getConfigValue('cache', {}), defaults);
 }
 
 /**
  * Get AI configuration
  */
 export function getAIConfig() {
-  return getConfigValueSafe('ai', {
+  const defaults = {
     enabled: true,
     openai: {
       apiKey: '',
@@ -367,28 +376,29 @@ export function getAIConfig() {
       url: 'http://localhost:6333',
       apiKey: undefined,
     },
-  });
+  };
+  return defu(getConfigValue('ai', {}), defaults);
 }
 
 /**
  * Check if running in development mode
  */
 export function isDevelopment(): boolean {
-  return getConfigValue('env.isDevelopment', false);
+  return isDevEnv;
 }
 
 /**
  * Check if running in production mode
  */
 export function isProduction(): boolean {
-  return getConfigValue('env.isProduction', false);
+  return isProdEnv;
 }
 
 /**
  * Check if running in test mode
  */
 export function isTest(): boolean {
-  return getConfigValue('env.isTest', false);
+  return isTestEnv;
 }
 
 /**

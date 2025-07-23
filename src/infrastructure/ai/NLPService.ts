@@ -1,16 +1,14 @@
 import { OpenAI } from 'openai';
 import { logger } from '@/logger';
-import { Priority } from '../../domain/value-objects/Priority.js';
-import { TodoStatus } from '../../domain/value-objects/TodoStatus.js';
+import { Priority as PrismaPriority, TodoStatus as PrismaTodoStatus } from '@prisma/client';
 
 export interface ParsedCommand {
   action: 'create' | 'update' | 'complete' | 'delete' | 'list';
   entity: 'todo' | 'todoList';
   parameters: {
     title?: string;
-    description?: string;
-    priority?: Priority;
-    status?: TodoStatus;
+    priority?: PrismaPriority;
+    status?: PrismaTodoStatus;
     dueDate?: Date;
     tags?: string[];
     todoId?: string;
@@ -54,9 +52,8 @@ Parse the user's command and return a JSON object with the following structure:
   "entity": "todo" | "todoList",
   "parameters": {
     "title": string (for create/update),
-    "description": string (optional),
-    "priority": "low" | "medium" | "high" | "critical" (optional),
-    "status": "pending" | "in_progress" | "completed" | "cancelled" (optional),
+    "priority": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | "URGENT",
+    "status": "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED",
     "dueDate": ISO date string (optional),
     "tags": array of strings (optional),
     "todoId": string (for update/complete/delete),
@@ -104,9 +101,6 @@ If the command is ambiguous, set a lower confidence score.`;
       if (parsed.parameters) {
         if (parsed.parameters.title) {
           result.parameters.title = parsed.parameters.title;
-        }
-        if (parsed.parameters.description) {
-          result.parameters.description = parsed.parameters.description;
         }
         if (parsed.parameters?.priority) {
           result.parameters.priority = this.mapPriority(parsed.parameters.priority);
@@ -185,39 +179,39 @@ Day: ${context.dayOfWeek}`;
     }
   }
 
-  private mapPriority(priority: string): Priority {
+  private mapPriority(priority: string): PrismaPriority {
     const normalized = priority.toLowerCase();
     switch (normalized) {
-      case 'low':
-        return Priority.low();
-      case 'medium':
-        return Priority.medium();
-      case 'high':
-        return Priority.high();
-      case 'critical':
-      case 'urgent':
-        return Priority.urgent();
+      case 'LOW':
+        return PrismaPriority.LOW;
+      case 'MEDIUM':
+        return PrismaPriority.MEDIUM;
+      case 'HIGH':
+        return PrismaPriority.HIGH;
+      case 'CRITICAL':
+      case 'URGENT':
+        return PrismaPriority.URGENT;
       default:
-        return Priority.medium();
+        return PrismaPriority.MEDIUM;
     }
   }
 
-  private mapStatus(status: string): TodoStatus {
+  private mapStatus(status: string): PrismaTodoStatus {
     const normalized = status.toLowerCase();
     switch (normalized) {
-      case 'pending':
-        return TodoStatus.pending();
-      case 'in_progress':
-      case 'in-progress':
-        return TodoStatus.inProgress();
-      case 'completed':
-      case 'done':
-        return TodoStatus.completed();
-      case 'cancelled':
-      case 'canceled':
-        return TodoStatus.cancelled();
+      case 'PENDING':
+        return PrismaTodoStatus.PENDING;
+      case 'IN_PROGRESS':
+      case 'IN-PROGRESS':
+        return PrismaTodoStatus.IN_PROGRESS;
+      case 'COMPLETED':
+      case 'DONE':
+        return PrismaTodoStatus.COMPLETED;
+      case 'CANCELLED':
+      case 'CANCELED':
+        return PrismaTodoStatus.CANCELLED;
       default:
-        return TodoStatus.pending();
+        return PrismaTodoStatus.PENDING;
     }
   }
 }

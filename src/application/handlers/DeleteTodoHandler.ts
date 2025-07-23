@@ -7,12 +7,12 @@ export class DeleteTodoHandler {
   constructor(
     private readonly todoRepository: TodoRepository,
     private readonly eventPublisher: EventPublisher
-  ) {}
+  ) { }
 
   async handle(command: DeleteTodoCommand): Promise<void> {
-    logger.debug('Handling delete todo command', { 
-      todoId: command.id, 
-      userId: command.userId 
+    logger.debug('Handling delete todo command', {
+      todoId: command.id,
+      userId: command.userId
     });
 
     const todo = await this.todoRepository.findById(command.id);
@@ -22,10 +22,10 @@ export class DeleteTodoHandler {
     }
 
     if (todo.userId !== command.userId) {
-      logger.warn('Unauthorized delete attempt', { 
-        todoId: command.id, 
+      logger.warn('Unauthorized delete attempt', {
+        todoId: command.id,
         requestedBy: command.userId,
-        ownedBy: todo.userId 
+        ownedBy: todo.userId
       });
       throw new Error('Unauthorized to delete this todo');
     }
@@ -37,9 +37,9 @@ export class DeleteTodoHandler {
     await this.eventPublisher.publishAll(todo.domainEvents);
     todo.markEventsAsCommitted();
 
-    logger.info('Todo deleted successfully', { 
-      todoId: command.id, 
-      userId: command.userId 
+    logger.info('Todo deleted successfully', {
+      todoId: command.id,
+      userId: command.userId
     });
   }
 }

@@ -6,12 +6,15 @@ export class TodoDeleted extends DomainEvent {
     public readonly deletedBy: string,
     version: number = 1
   ) {
-    super(aggregateId, 'TodoDeleted', version);
+    const eventId = crypto.randomUUID();
+    super(aggregateId, 'TodoDeleted', version, eventId);
   }
 
   getEventData(): Record<string, any> {
     return {
       deletedBy: this.deletedBy,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
     };
   }
 }

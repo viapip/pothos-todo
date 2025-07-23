@@ -2,15 +2,19 @@ import { TodoCreated } from '../../../domain/events/TodoCreated.js';
 import { TodoUpdated } from '../../../domain/events/TodoUpdated.js';
 import { TodoDeleted } from '../../../domain/events/TodoDeleted.js';
 import { EmbeddingService } from '../../ai/EmbeddingService.js';
+import { Container } from '../../container/Container.js';
 import { logger } from '@/logger';
 import type { DomainEventHandler } from '../EventHandler.js';
+import type { Hooks } from 'crossws';
+import type { EventHandlerResolver } from 'h3';
 
 export class TodoEmbeddingHandler implements DomainEventHandler<TodoCreated | TodoUpdated | TodoDeleted> {
 
-  constructor(
-    private embeddingService: EmbeddingService,
-    private todoRepository: any
-  ) {}
+  private embeddingService: EmbeddingService;
+
+  constructor() {
+    this.embeddingService = Container.getInstance().embeddingService;
+  }
 
   async handle(event: TodoCreated | TodoUpdated | TodoDeleted): Promise<void> {
     try {
@@ -31,25 +35,24 @@ export class TodoEmbeddingHandler implements DomainEventHandler<TodoCreated | To
     await this.embeddingService.embedTodo(
       event.aggregateId,
       event.title,
-      event.description,
       event.userId,
-      event.status.value,
-      event.priority.value
+      event.status,
+      event.priority
     );
   }
 
   private async handleTodoUpdated(event: TodoUpdated): Promise<void> {
     // Get the latest todo data from the repository
-    const todo = await this.todoRepository.findById(event.aggregateId);
+    const todoRepo = Container.getInstance().todoRepository;
+    const todo = await todoRepo.findById(event.aggregateId);
 
     if (todo) {
       await this.embeddingService.embedTodo(
         todo.id,
         todo.title,
-        todo.description || null,
         todo.userId,
-        todo.status.value,
-        todo.priority.value
+        todo.status,
+        todo.priority
       );
     }
   }

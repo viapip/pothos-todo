@@ -7,7 +7,7 @@ export class CompleteTodoHandler {
   constructor(
     private readonly todoRepository: TodoRepository,
     private readonly eventPublisher: EventPublisher
-  ) {}
+  ) { }
 
   async handle(command: CompleteTodoCommand): Promise<Todo> {
     const todo = await this.todoRepository.findById(command.id);

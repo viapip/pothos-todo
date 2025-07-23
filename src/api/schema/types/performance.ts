@@ -88,8 +88,8 @@ const PerformanceAnomalyType = builder.objectType('PerformanceAnomaly', {
   }),
 });
 
-// Complexity analysis type
-const ComplexityAnalysisType = builder.objectType('ComplexityAnalysis', {
+// Query complexity analysis type
+const QueryComplexityAnalysisType = builder.objectType('QueryComplexityAnalysis', {
   description: 'Query complexity analysis',
   fields: (t) => ({
     averageComplexity: t.float({
@@ -157,7 +157,7 @@ builder.queryField('performanceAnomalies', (t) =>
 
 builder.queryField('complexityAnalysis', (t) =>
   t.field({
-    type: ComplexityAnalysisType,
+    type: QueryComplexityAnalysisType,
     description: 'Get query complexity analysis',
     authScopes: {
       admin: true,

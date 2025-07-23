@@ -5,6 +5,7 @@ import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { getTracer } from '@/infrastructure/telemetry/telemetry';
 import { CacheManager } from '@/infrastructure/cache/CacheManager';
 import { logger } from '@/logger';
+import { hash } from 'ohash';
 
 const tracer = getTracer('graphql-directives');
 
@@ -84,9 +85,9 @@ export class CacheDirective extends SchemaDirectiveVisitor {
       
       // Generate cache key
       const fieldKey = `${info.parentType.name}:${info.fieldName}`;
-      const argsKey = JSON.stringify(fieldArgs);
+      const argsHash = hash(fieldArgs);
       const userKey = scope === 'PRIVATE' && context.user ? `:user:${context.user.id}` : '';
-      const cacheKey = customKey || `gql:${fieldKey}:${argsKey}${userKey}`;
+      const cacheKey = customKey || `gql:${fieldKey}:${argsHash}${userKey}`;
 
       // Try to get from cache
       const cached = await cacheManager.get(cacheKey);

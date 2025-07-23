@@ -1,8 +1,8 @@
 import { OpenAI } from 'openai';
 import { EmbeddingService } from './EmbeddingService.js';
 import { VectorStore } from './VectorStore.js';
-import { logger } from '@/logger';
-import type { Todo } from '@prisma/client';
+import { logger } from '@/logger.js';
+import type { Todo, PrismaClient } from '@prisma/client';
 
 export interface RAGContext {
   query: string;

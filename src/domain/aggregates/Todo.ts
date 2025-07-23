@@ -1,41 +1,40 @@
 import { AggregateRoot } from './base/AggregateRoot.js';
-import { TodoStatus } from '../value-objects/TodoStatus.js';
-import { Priority } from '../value-objects/Priority.js';
-import { DueDate } from '../value-objects/DueDate.js';
 import { TodoCreated } from '../events/TodoCreated.js';
 import { TodoCompleted } from '../events/TodoCompleted.js';
 import { TodoDeleted } from '../events/TodoDeleted.js';
 import { TodoAssigned } from '../events/TodoAssigned.js';
 import { TodoUpdated } from '../events/TodoUpdated.js';
+import { Priority as PrismaPriority, TodoStatus as PrismaTodoStatus } from '@prisma/client';
 
 export class Todo extends AggregateRoot {
   private _title: string;
+  private _status: PrismaTodoStatus;
+  private _priority: PrismaPriority;
+  private _dueDate: Date;
   private _description: string | null;
-  private _status: TodoStatus;
-  private _priority: Priority;
-  private _dueDate: DueDate | null;
   private _completedAt: Date | null;
   private _userId: string;
   private _todoListId: string | null;
   private _createdAt: Date;
   private _updatedAt: Date;
+  private _tags: string[];
 
   constructor(
     id: string,
     title: string,
-    description: string | null,
     userId: string,
-    todoListId: string | null = null,
-    status: TodoStatus = TodoStatus.pending(),
-    priority: Priority = Priority.medium(),
-    dueDate: DueDate | null = null,
+    todoListId: string | null,
+    status: PrismaTodoStatus = PrismaTodoStatus.PENDING,
+    priority: PrismaPriority = PrismaPriority.MEDIUM,
+    dueDate: Date,
+    description: string | null = null,
+    tags: string[] = [],
     completedAt: Date | null = null,
     createdAt: Date = new Date(),
-    updatedAt: Date = new Date()
+    updatedAt: Date = new Date(),
   ) {
     super(id);
     this._title = title;
-    this._description = description;
     this._status = status;
     this._priority = priority;
     this._dueDate = dueDate;
@@ -44,39 +43,55 @@ export class Todo extends AggregateRoot {
     this._todoListId = todoListId;
     this._createdAt = createdAt;
     this._updatedAt = updatedAt;
+    this._description = description;
+    this._tags = tags;
   }
 
   public static create(
     id: string,
     title: string,
-    description: string | null,
     userId: string,
     todoListId: string | null = null,
-    priority: Priority = Priority.medium(),
-    dueDate: DueDate | null = null
+    priority: PrismaPriority = PrismaPriority.MEDIUM,
+    dueDate: Date,
+    description: string | null = null,
+    tags: string[] = [],
+    status: PrismaTodoStatus = PrismaTodoStatus.PENDING,
+    completedAt: Date | null = null,
+    createdAt: Date = new Date(),
+    updatedAt: Date = new Date(),
   ): Todo {
     const todo = new Todo(
       id,
       title,
-      description,
       userId,
       todoListId,
-      TodoStatus.pending(),
+      status,
       priority,
-      dueDate
+      dueDate,
+      description,
+      tags,
+      completedAt,
+      createdAt,
+      updatedAt,
     );
 
     todo.addDomainEvent(
       new TodoCreated(
         id,
         title,
-        description,
         userId,
         todoListId,
-        todo._status,
+        status,
         priority,
-        dueDate?.value || null,
-        todo.version
+        tags,
+        dueDate,
+        description,
+        completedAt,
+        new Date(),
+        createdAt,
+        updatedAt,
+        1,
       )
     );
 
@@ -87,19 +102,15 @@ export class Todo extends AggregateRoot {
     return this._title;
   }
 
-  get description(): string | null {
-    return this._description;
-  }
-
-  get status(): TodoStatus {
+  get status(): PrismaTodoStatus {
     return this._status;
   }
 
-  get priority(): Priority {
+  get priority(): PrismaPriority {
     return this._priority;
   }
 
-  get dueDate(): DueDate | null {
+  get dueDate(): Date | null {
     return this._dueDate;
   }
 
@@ -123,12 +134,23 @@ export class Todo extends AggregateRoot {
     return this._updatedAt;
   }
 
+  get description(): string | null {
+    return this._description;
+  }
+
+  get tags(): string[] {
+    return this._tags;
+  }
+
   public update(
     title?: string,
+    priority: PrismaPriority = PrismaPriority.MEDIUM,
+    dueDate?: Date,
     description?: string | null,
-    priority?: Priority,
-    dueDate?: DueDate | null,
-    updatedBy?: string
+    tags?: string[],
+    status?: PrismaTodoStatus,
+    completedAt?: Date | null,
+    updatedBy?: string,
   ): void {
     const updatedFields: Record<string, any> = {};
     let hasChanges = false;
@@ -139,22 +161,48 @@ export class Todo extends AggregateRoot {
       hasChanges = true;
     }
 
-    if (description !== undefined && description !== this._description) {
-      this._description = description;
-      updatedFields.description = description;
-      hasChanges = true;
-    }
-
-    if (priority && !priority.equals(this._priority)) {
+    if (priority && priority !== this._priority) {
       this._priority = priority;
       updatedFields.priority = priority;
       hasChanges = true;
     }
 
-    if (dueDate !== undefined && (!dueDate || !this._dueDate || !dueDate.equals(this._dueDate))) {
-      this._dueDate = dueDate;
-      updatedFields.dueDate = dueDate?.value || null;
+    if (status && status !== this._status) {
+      this._status = status;
+      updatedFields.status = status;
       hasChanges = true;
+    }
+
+    if (dueDate !== undefined && (!dueDate || !this._dueDate || this._dueDate !== dueDate)) {
+      this._dueDate = dueDate;
+      updatedFields.dueDate = dueDate;
+      hasChanges = true;
+    }
+
+    if (tags && tags !== this._tags) {
+      this._tags = tags;
+      updatedFields.tags = tags;
+      hasChanges = true;
+    }
+
+    if (description && description !== this._description) {
+      this._description = description;
+      updatedFields.description = description;
+      hasChanges = true;
+    }
+
+    if (completedAt && completedAt !== this._completedAt) {
+      this._completedAt = completedAt;
+      updatedFields.completedAt = completedAt;
+      hasChanges = true;
+    }
+
+    if (updatedBy && updatedBy !== this._userId) {
+      this._userId = updatedBy;
+      updatedFields.updatedBy = updatedBy;
+      hasChanges = true;
+    } else if (updatedBy) {
+      updatedFields.updatedBy = updatedBy;
     }
 
     if (hasChanges) {
@@ -170,23 +218,23 @@ export class Todo extends AggregateRoot {
     }
   }
 
-  public complete(userId: string): void {
-    if (this._status.isCompleted()) {
+  public complete(userId: string, completedAt: Date | null = null): void {
+    if (this._status === PrismaTodoStatus.COMPLETED) {
       throw new Error('Todo is already completed');
     }
 
-    if (!this._status.canTransitionTo(TodoStatus.completed())) {
-      throw new Error(`Cannot complete todo from ${this._status.value} status`);
+    if (this._status !== PrismaTodoStatus.PENDING) {
+      throw new Error(`Cannot complete todo from ${this._status} status`);
     }
 
-    this._status = TodoStatus.completed();
-    this._completedAt = new Date();
+    this._status = PrismaTodoStatus.COMPLETED;
+    this._completedAt = completedAt || new Date();
     this._updatedAt = new Date();
 
     this.addDomainEvent(
       new TodoCompleted(
         this.id,
-        this._completedAt,
+        completedAt || new Date(),
         userId,
         this.version
       )
@@ -194,15 +242,15 @@ export class Todo extends AggregateRoot {
   }
 
   public cancel(): void {
-    if (this._status.isCompleted()) {
+    if (this._status === PrismaTodoStatus.COMPLETED) {
       throw new Error('Cannot cancel completed todo');
     }
 
-    if (!this._status.canTransitionTo(TodoStatus.cancelled())) {
-      throw new Error(`Cannot cancel todo from ${this._status.value} status`);
+    if (this._status !== PrismaTodoStatus.PENDING) {
+      throw new Error(`Cannot cancel todo from ${this._status} status`);
     }
 
-    this._status = TodoStatus.cancelled();
+    this._status = PrismaTodoStatus.CANCELLED;
     this._updatedAt = new Date();
 
     this.addDomainEvent(
@@ -229,6 +277,7 @@ export class Todo extends AggregateRoot {
         this._userId,
         assignedBy,
         todoListId,
+        this._tags,
         this.version
       )
     );
@@ -245,14 +294,14 @@ export class Todo extends AggregateRoot {
   }
 
   public isOverdue(): boolean {
-    return this._dueDate ? this._dueDate.isOverdue() : false;
+    return this._dueDate ? new Date(this._dueDate) < new Date() : false;
   }
 
   public isDueToday(): boolean {
-    return this._dueDate ? this._dueDate.isDueToday() : false;
+    return this._dueDate ? new Date(this._dueDate).getDate() === new Date().getDate() && new Date(this._dueDate).getMonth() === new Date().getMonth() && new Date(this._dueDate).getFullYear() === new Date().getFullYear() : false;
   }
 
   public isDueSoon(daysThreshold: number = 3): boolean {
-    return this._dueDate ? this._dueDate.isDueSoon(daysThreshold) : false;
+    return this._dueDate ? new Date(this._dueDate).getDate() + daysThreshold >= new Date().getDate() && new Date(this._dueDate).getMonth() === new Date().getMonth() && new Date(this._dueDate).getFullYear() === new Date().getFullYear() : false;
   }
 }

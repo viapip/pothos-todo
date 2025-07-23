@@ -1,15 +1,14 @@
 import { UpdateTodoCommand } from '../commands/UpdateTodoCommand.js';
 import { Todo } from '../../domain/aggregates/Todo.js';
-import { Priority } from '../../domain/value-objects/Priority.js';
-import { DueDate } from '../../domain/value-objects/DueDate.js';
 import type { TodoRepository } from '../../domain/repositories/TodoRepository.js';
 import type { EventPublisher } from '../../infrastructure/events/EventPublisher.js';
+import { DueDate } from '../../domain/value-objects/DueDate.js';
 
 export class UpdateTodoHandler {
   constructor(
     private readonly todoRepository: TodoRepository,
     private readonly eventPublisher: EventPublisher
-  ) {}
+  ) { }
 
   async handle(command: UpdateTodoCommand): Promise<Todo> {
     if (!command.hasChanges()) {
@@ -27,16 +26,14 @@ export class UpdateTodoHandler {
       throw new Error('Unauthorized to update this todo');
     }
 
-    const priority = command.priority ? new Priority(command.priority) : undefined;
-    const dueDate = command.dueDate !== undefined 
-      ? (command.dueDate ? new DueDate(command.dueDate) : null)
-      : undefined;
-
     todo.update(
       command.title,
+      command.priority,
+      command.dueDate,
       command.description,
-      priority,
-      dueDate,
+      command.tags,
+      command.status,
+      command.completedAt,
       command.userId
     );
 

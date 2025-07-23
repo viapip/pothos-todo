@@ -1,3 +1,5 @@
+import { destr } from 'destr';
+
 export default {
   // Server Configuration
   server: {
@@ -122,7 +124,7 @@ export default {
     environment: process.env.NODE_ENV || 'development',
     exporterUrl: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
     exporterHeaders: process.env.OTEL_EXPORTER_OTLP_HEADERS 
-      ? JSON.parse(process.env.OTEL_EXPORTER_OTLP_HEADERS) 
+      ? destr(process.env.OTEL_EXPORTER_OTLP_HEADERS) 
       : undefined,
     samplingRate: process.env.TELEMETRY_SAMPLING_RATE 
       ? parseFloat(process.env.TELEMETRY_SAMPLING_RATE) 

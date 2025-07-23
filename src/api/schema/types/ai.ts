@@ -1,211 +1,227 @@
 import { builder } from '../builder.js';
 
-// Define all AI-related types in one place to avoid duplication
-
-export const CompletionTimePredictionType = builder.objectRef<any>('CompletionTimePrediction').implement({
+// AI Insight Types
+export const ProductivityInsight = builder.objectType('ProductivityInsight', {
   fields: (t) => ({
-    estimatedHours: t.float({
-      resolve: (prediction) => prediction.estimatedHours,
-      description: 'Estimated hours to complete the task',
-    }),
-    confidence: t.float({
-      resolve: (prediction) => prediction.confidence,
-      description: 'Confidence level of the prediction (0-1)',
-    }),
-    factors: t.stringList({
-      resolve: (prediction) => prediction.factors,
-      description: 'Factors affecting the time estimate',
-    }),
+    id: t.exposeString('id'),
+    type: t.exposeString('type'),
+    title: t.exposeString('title'),
+    description: t.exposeString('description'),
+    impact: t.exposeString('impact'),
+    confidence: t.exposeFloat('confidence'),
+    actionable: t.exposeBoolean('actionable'),
+    createdAt: t.expose('createdAt', { type: 'DateTime' }),
   }),
 });
 
-export const PrioritySuggestionType = builder.objectRef<any>('PrioritySuggestion').implement({
+export const WorkPatternAnalysis = builder.objectType('WorkPatternAnalysis', {
   fields: (t) => ({
-    suggestedPriority: t.string({
-      resolve: (suggestion) => suggestion.suggestedPriority,
-      description: 'Suggested priority level',
-    }),
-    reasoning: t.string({
-      resolve: (suggestion) => suggestion.reasoning,
-      description: 'Explanation for the suggestion',
-    }),
-    confidence: t.float({
-      resolve: (suggestion) => suggestion.confidence,
-      description: 'Confidence level of the suggestion (0-1)',
-    }),
+    peakHours: t.exposeStringList('peakHours'),
+    mostProductiveDays: t.exposeStringList('mostProductiveDays'),
+    averageTasksPerSession: t.exposeFloat('averageTasksPerSession'),
+    completionPatterns: t.expose('completionPatterns', { type: 'JSON' }),
+    breakdownByPriority: t.expose('breakdownByPriority', { type: 'JSON' }),
+    trends: t.expose('trends', { type: 'JSON' }),
   }),
 });
 
-export const TaskComplexityAnalysisType = builder.objectRef<any>('TaskComplexityAnalysis').implement({
+export const SmartRecommendation = builder.objectType('SmartRecommendation', {
   fields: (t) => ({
-    complexity: t.string({
-      resolve: (analysis) => analysis.complexity,
-      description: 'Complexity level: simple, moderate, or complex',
-    }),
-    requiredSkills: t.stringList({
-      resolve: (analysis) => analysis.requiredSkills,
-      description: 'Skills required to complete the task',
-    }),
-    dependencies: t.stringList({
-      resolve: (analysis) => analysis.dependencies,
-      description: 'Potential dependencies or blockers',
-    }),
-    risks: t.stringList({
-      resolve: (analysis) => analysis.risks,
-      description: 'Potential risks associated with the task',
-    }),
+    id: t.exposeString('id'),
+    type: t.exposeString('type'),
+    title: t.exposeString('title'),
+    description: t.exposeString('description'),
+    priority: t.exposeString('priority'),
+    estimatedImpact: t.exposeString('estimatedImpact'),
+    implementation: t.exposeString('implementation'),
+    confidence: t.exposeFloat('confidence'),
   }),
 });
 
-export const NextActionsPredictionType = builder.objectRef<any>('NextActionsPrediction').implement({
+export const BurnoutRiskAssessment = builder.objectType('BurnoutRiskAssessment', {
   fields: (t) => ({
-    suggestedNextTasks: t.stringList({
-      resolve: (prediction) => prediction.suggestedNextTasks,
-      description: 'Suggested next tasks to create',
-    }),
-    reasoning: t.string({
-      resolve: (prediction) => prediction.reasoning,
-      description: 'Reasoning behind the suggestions',
-    }),
+    riskLevel: t.exposeString('riskLevel'),
+    score: t.exposeFloat('score'),
+    factors: t.exposeStringList('factors'),
+    recommendations: t.exposeStringList('recommendations'),
+    earlyWarnings: t.exposeStringList('earlyWarnings'),
+    lastAssessment: t.expose('lastAssessment', { type: 'DateTime' }),
   }),
 });
 
-export const RAGSourceType = builder.objectRef<any>('RAGSource').implement({
+// ML Prediction Types
+export const CompletionTimePrediction = builder.objectType('CompletionTimePrediction', {
   fields: (t) => ({
-    id: t.string({
-      resolve: (source) => source.id,
-    }),
-    title: t.string({
-      resolve: (source) => source.title,
-    }),
-    relevanceScore: t.float({
-      resolve: (source) => source.relevanceScore,
-    }),
+    estimatedHours: t.exposeFloat('estimatedHours'),
+    confidence: t.exposeFloat('confidence'),
+    factors: t.exposeStringList('factors'),
+    similarTasks: t.expose('similarTasks', { type: 'JSON' }),
+    reasoning: t.exposeString('reasoning'),
   }),
 });
 
-export const RAGResponseType = builder.objectRef<any>('RAGResponse').implement({
+export const PrioritySuggestion = builder.objectType('PrioritySuggestion', {
   fields: (t) => ({
-    answer: t.string({
-      resolve: (response) => response.answer,
-      description: 'AI-generated answer to the query',
-    }),
-    sources: t.field({
-      type: [RAGSourceType],
-      resolve: (response) => response.sources,
-      description: 'Source todos used to generate the answer',
-    }),
-    confidence: t.float({
-      resolve: (response) => response.confidence,
-      description: 'Confidence score of the answer (0-1)',
-    }),
+    suggestedPriority: t.exposeString('suggestedPriority'),
+    currentPriority: t.exposeString('currentPriority'),
+    confidence: t.exposeFloat('confidence'),
+    reasoning: t.exposeString('reasoning'),
+    urgencyIndicators: t.exposeStringList('urgencyIndicators'),
   }),
 });
 
-export const UserInsightsType = builder.objectRef<any>('UserInsights').implement({
+export const ComplexityAnalysis = builder.objectType('ComplexityAnalysis', {
   fields: (t) => ({
-    productivity: t.string({
-      resolve: (insights) => insights.productivity,
-      description: 'Overall productivity assessment',
-    }),
-    patterns: t.stringList({
-      resolve: (insights) => insights.patterns,
-      description: 'Observed patterns in user tasks',
-    }),
-    recommendations: t.stringList({
-      resolve: (insights) => insights.recommendations,
-      description: 'Actionable recommendations',
-    }),
+    complexityScore: t.exposeFloat('complexityScore'),
+    level: t.exposeString('level'),
+    factors: t.exposeStringList('factors'),
+    breakdown: t.expose('breakdown', { type: 'JSON' }),
+    suggestedApproach: t.exposeString('suggestedApproach'),
   }),
 });
 
-export const TaskExplanationType = builder.objectRef<any>('TaskExplanation').implement({
+// Task Analysis Types
+export const TaskAnalysisResult = builder.objectType('TaskAnalysisResult', {
   fields: (t) => ({
-    explanation: t.string({
-      resolve: (explanation) => explanation.explanation,
-      description: 'Clear explanation of the task',
-    }),
-    breakdown: t.stringList({
-      resolve: (explanation) => explanation.breakdown,
-      description: 'Subtasks or steps to complete',
-    }),
-    estimatedTime: t.string({
-      resolve: (explanation) => explanation.estimatedTime,
-      description: 'Estimated time to complete',
-    }),
-    difficulty: t.string({
-      resolve: (explanation) => explanation.difficulty,
-      description: 'Task difficulty level',
-    }),
-  }),
-});
-
-export const NLPCommandResultType = builder.objectRef<any>('NLPCommandResult').implement({
-  fields: (t) => ({
-    success: t.boolean({
-      resolve: (result) => result.success,
-      description: 'Whether the command was executed successfully',
-    }),
-    action: t.string({
-      resolve: (result) => result.action,
-      description: 'The action that was performed (create, update, complete, delete, list)',
-    }),
-    entity: t.string({
-      resolve: (result) => result.entity,
-      description: 'The entity type that was affected (todo, todoList)',
-    }),
-    result: t.field({
+    todoId: t.exposeString('todoId'),
+    predictions: t.field({
       type: 'JSON',
-      nullable: true,
-      resolve: (result) => result.result || null,
-      description: 'The result of the command execution',
+      resolve: (analysis) => ({
+        completionTime: analysis.predictions.completionTime,
+        prioritySuggestion: analysis.predictions.prioritySuggestion,
+        complexityAnalysis: analysis.predictions.complexityAnalysis,
+      }),
     }),
-    error: t.string({
-      nullable: true,
-      resolve: (result) => result.error || null,
-      description: 'Error message if the command failed',
+    insights: t.field({
+      type: 'JSON',
+      resolve: (analysis) => ({
+        semanticSimilarity: analysis.insights.semanticSimilarity,
+        relatedTasks: analysis.insights.relatedTasks,
+        autoTags: analysis.insights.autoTags,
+      }),
     }),
-    confidence: t.float({
-      resolve: (result) => result.confidence,
-      description: 'Confidence score of the NLP parsing (0-1)',
-    }),
-    needsClarification: t.boolean({
-      nullable: true,
-      resolve: (result) => result.needsClarification || null,
-      description: 'Whether the command needs clarification',
-    }),
-    clarificationMessage: t.string({
-      nullable: true,
-      resolve: (result) => result.clarificationMessage || null,
-      description: 'Message asking for clarification',
-    }),
-  }),
-});
-
-export const NLPSuggestionType = builder.objectRef<any>('NLPSuggestion').implement({
-  fields: (t) => ({
-    suggestions: t.stringList({
-      resolve: (result) => result.suggestions,
-      description: 'List of suggested task titles',
+    recommendations: t.field({
+      type: 'JSON',
+      resolve: (analysis) => ({
+        nextActions: analysis.recommendations.nextActions,
+        optimizations: analysis.recommendations.optimizations,
+        scheduling: analysis.recommendations.scheduling,
+      }),
     }),
   }),
 });
 
-export const TodoWithPredictionsType = builder.objectRef<any>('TodoWithPredictions').implement({
+// Productivity Report Types
+export const ProductivitySummary = builder.objectType('ProductivitySummary', {
   fields: (t) => ({
-    todo: t.prismaField({
+    completionRate: t.exposeFloat('completionRate'),
+    averageTasksPerDay: t.exposeFloat('averageTasksPerDay'),
+    productivityTrend: t.exposeString('productivityTrend'),
+  }),
+});
+
+export const UserProductivityReport = builder.objectType('UserProductivityReport', {
+  fields: (t) => ({
+    summary: t.field({
+      type: ProductivitySummary,
+      resolve: (report) => report.summary,
+    }),
+    insights: t.field({
+      type: [ProductivityInsight],
+      resolve: (report) => report.insights || [],
+    }),
+    patterns: t.field({
+      type: WorkPatternAnalysis,
+      nullable: true,
+      resolve: (report) => report.patterns,
+    }),
+    recommendations: t.field({
+      type: [SmartRecommendation],
+      resolve: (report) => report.recommendations || [],
+    }),
+    burnoutRisk: t.field({
+      type: BurnoutRiskAssessment,
+      nullable: true,
+      resolve: (report) => report.burnoutRisk,
+    }),
+  }),
+});
+
+// Task Scheduling Types
+export const TaskRecommendation = builder.objectType('TaskRecommendation', {
+  fields: (t) => ({
+    todo: t.field({
       type: 'Todo',
-      resolve: (query, result) => result.todo,
+      resolve: (rec) => rec.todo,
     }),
-    predictedCompletionTime: t.field({
-      type: CompletionTimePredictionType,
-      nullable: true,
-      resolve: (result) => result.predictedCompletionTime,
+    estimatedTime: t.exposeFloat('estimatedTime', { nullable: true }),
+    reasoning: t.exposeString('reasoning'),
+    suggestedDay: t.exposeString('suggestedDay', { nullable: true }),
+  }),
+});
+
+export const SchedulingSuggestions = builder.objectType('SchedulingSuggestions', {
+  fields: (t) => ({
+    todayRecommendations: t.field({
+      type: [TaskRecommendation],
+      resolve: (suggestions) => suggestions.todayRecommendations || [],
     }),
-    suggestedPriority: t.field({
-      type: PrioritySuggestionType,
-      nullable: true,
-      resolve: (result) => result.suggestedPriority,
+    weeklyPlan: t.field({
+      type: [TaskRecommendation],
+      resolve: (suggestions) => suggestions.weeklyPlan || [],
     }),
+    optimizations: t.exposeStringList('optimizations'),
+  }),
+});
+
+// AI Chat Types
+export const ChatResponse = builder.objectType('ChatResponse', {
+  fields: (t) => ({
+    response: t.exposeString('response'),
+    sources: t.field({
+      type: 'JSON',
+      resolve: (chat) => chat.sources,
+    }),
+    suggestions: t.exposeStringList('suggestions'),
+    confidence: t.exposeFloat('confidence'),
+  }),
+});
+
+// AI Service Health Types
+export const AIServiceHealth = builder.objectType('AIServiceHealth', {
+  fields: (t) => ({
+    status: t.exposeString('status'),
+    services: t.field({
+      type: 'JSON',
+      resolve: (health) => health.services,
+    }),
+    lastUpdate: t.expose('lastUpdate', { type: 'DateTime' }),
+  }),
+});
+
+// Input Types for AI operations
+export const AnalyzeTodoInput = builder.inputType('AnalyzeTodoInput', {
+  fields: (t) => ({
+    todoId: t.string({ required: true }),
+    includeMLPredictions: t.boolean({ defaultValue: true }),
+    includeEmbeddings: t.boolean({ defaultValue: true }),
+    includeNLP: t.boolean({ defaultValue: true }),
+  }),
+});
+
+export const ChatWithAIInput = builder.inputType('ChatWithAIInput', {
+  fields: (t) => ({
+    query: t.string({ required: true }),
+    sessionId: t.string({ defaultValue: 'default' }),
+    includeContext: t.boolean({ defaultValue: true }),
+  }),
+});
+
+export const ProductivityReportInput = builder.inputType('ProductivityReportInput', {
+  fields: (t) => ({
+    includeInsights: t.boolean({ defaultValue: true }),
+    includePatterns: t.boolean({ defaultValue: true }),
+    includeBurnoutRisk: t.boolean({ defaultValue: true }),
+    timeRange: t.string({ defaultValue: '30d' }),
   }),
 });

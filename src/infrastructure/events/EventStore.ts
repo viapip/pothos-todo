@@ -12,8 +12,10 @@ export interface StoredEvent {
 export interface EventStore {
   append(event: DomainEvent): Promise<void>;
   appendAll(events: DomainEvent[]): Promise<void>;
-  getEvents(aggregateId: string): Promise<StoredEvent[]>;
+  getEvents(aggregateId: string, fromVersion?: number, limit?: number): Promise<DomainEvent[]>;
   getEventsFromVersion(aggregateId: string, fromVersion: number): Promise<StoredEvent[]>;
   getAllEvents(): Promise<StoredEvent[]>;
   getEventsByType(eventType: string): Promise<StoredEvent[]>;
+  getEventsAfterPosition(position: number, limit: number): Promise<DomainEvent[]>;
+  getEventsByTimeRange(start: Date, end: Date): Promise<DomainEvent[]>;
 }

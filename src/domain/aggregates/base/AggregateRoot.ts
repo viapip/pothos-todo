@@ -19,4 +19,8 @@ export abstract class AggregateRoot<T = string> extends Entity<T> {
     this.clearEvents();
     this.incrementVersion();
   }
+
+  public getUncommittedEvents() {
+    return this.domainEvents;
+  }
 }

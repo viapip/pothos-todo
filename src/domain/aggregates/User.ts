@@ -24,6 +24,8 @@ export class UserUpdated extends DomainEvent {
     aggregateId: string,
     public readonly email?: string,
     public readonly name?: string | null,
+    public readonly role?: string,
+    public readonly permissions?: string[],
     version: number = 1
   ) {
     super(aggregateId, 'UserUpdated', version);
@@ -33,6 +35,8 @@ export class UserUpdated extends DomainEvent {
     return {
       email: this.email,
       name: this.name,
+      role: this.role,
+      permissions: this.permissions,
     };
   }
 }
@@ -42,17 +46,22 @@ export class User extends AggregateRoot {
   private _name: string | null;
   private _createdAt: Date;
   private _updatedAt: Date;
-
+  private _role: string;
+  private _permissions: string[];
   constructor(
     id: string,
     email: string,
     name: string | null,
+    role: string,
+    permissions: string[],
     createdAt: Date = new Date(),
     updatedAt: Date = new Date()
   ) {
     super(id);
     this._email = email;
     this._name = name;
+    this._role = role;
+    this._permissions = permissions;
     this._createdAt = createdAt;
     this._updatedAt = updatedAt;
   }
@@ -60,9 +69,11 @@ export class User extends AggregateRoot {
   public static create(
     id: string,
     email: string,
-    name: string | null = null
+    name: string | null = null,
+    role: string = 'user',
+    permissions: string[] = []
   ): User {
-    const user = new User(id, email, name);
+    const user = new User(id, email, name, role, permissions);
 
     user.addDomainEvent(
       new UserCreated(
@@ -84,6 +95,14 @@ export class User extends AggregateRoot {
     return this._name;
   }
 
+  get role(): string {
+    return this._role;
+  }
+
+  get permissions(): string[] {
+    return this._permissions;
+  }
+
   get createdAt(): Date {
     return this._createdAt;
   }
@@ -94,7 +113,9 @@ export class User extends AggregateRoot {
 
   public update(
     email?: string,
-    name?: string | null
+    name?: string | null,
+    role?: string,
+    permissions?: string[]
   ): void {
     let hasChanges = false;
 
@@ -108,6 +129,16 @@ export class User extends AggregateRoot {
       hasChanges = true;
     }
 
+    if (role !== undefined && role !== this._role) {
+      this._role = role;
+      hasChanges = true;
+    }
+
+    if (permissions !== undefined && permissions !== this._permissions) {
+      this._permissions = permissions;
+      hasChanges = true;
+    }
+
     if (hasChanges) {
       this._updatedAt = new Date();
       this.addDomainEvent(
@@ -115,6 +146,8 @@ export class User extends AggregateRoot {
           this.id,
           email,
           name,
+          role,
+          permissions,
           this.version
         )
       );

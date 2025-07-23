@@ -1,5 +1,16 @@
 import { builder } from '../builder.js';
 import { Container } from '@/infrastructure/container/Container';
+import { 
+  UserProductivityReport, 
+  SchedulingSuggestions, 
+  AIServiceHealth,
+  ProductivityInsight,
+  WorkPatternAnalysis,
+  SmartRecommendation,
+  BurnoutRiskAssessment,
+  ProductivityReportInput
+} from '../types/ai.js';
+import { aiPipelineService } from '@/infrastructure/ai/AIPipelineService.js';
 import prisma from '@/lib/prisma';
 
 // Input type for semantic search
@@ -240,3 +251,149 @@ function generateSimpleSuggestions(todoContext: string, userContext?: string | n
 
   return suggestions;
 }
+
+// Add Advanced AI queries for productivity insights
+builder.queryFields((t) => ({
+  // Comprehensive productivity report
+  productivityReport: t.field({
+    type: UserProductivityReport,
+    args: {
+      input: t.arg({ type: ProductivityReportInput, required: false }),
+    },
+    authScopes: {
+      authenticated: true,
+    },
+    resolve: async (_, { input }, { session }) => {
+      if (!session?.user) {
+        throw new Error('Authentication required');
+      }
+
+      const pipeline = aiPipelineService(prisma);
+      const report = await pipeline.generateProductivityReport(session.user.id);
+
+      return report;
+    },
+  }),
+
+  // Task scheduling suggestions powered by AI
+  taskSchedulingSuggestions: t.field({
+    type: SchedulingSuggestions,
+    authScopes: {
+      authenticated: true,
+    },
+    resolve: async (_, __, { session }) => {
+      if (!session?.user) {
+        throw new Error('Authentication required');
+      }
+
+      const pipeline = aiPipelineService(prisma);
+      const suggestions = await pipeline.suggestTaskScheduling(session.user.id);
+
+      return suggestions;
+    },
+  }),
+
+  // AI service health monitoring
+  aiServiceHealth: t.field({
+    type: AIServiceHealth,
+    authScopes: {
+      admin: true,
+    },
+    resolve: async () => {
+      const pipeline = aiPipelineService(prisma);
+      const health = pipeline.getHealthStatus();
+
+      return health;
+    },
+  }),
+
+  // Individual productivity insights
+  productivityInsights: t.field({
+    type: [ProductivityInsight],
+    authScopes: {
+      authenticated: true,
+    },
+    resolve: async (_, __, { session }) => {
+      if (!session?.user) {
+        throw new Error('Authentication required');
+      }
+
+      try {
+        const pipeline = aiPipelineService(prisma);
+        const report = await pipeline.generateProductivityReport(session.user.id);
+        return report.insights || [];
+      } catch (error) {
+        console.error('Failed to get productivity insights:', error);
+        return [];
+      }
+    },
+  }),
+
+  // Work pattern analysis
+  workPatterns: t.field({
+    type: WorkPatternAnalysis,
+    nullable: true,
+    authScopes: {
+      authenticated: true,
+    },
+    resolve: async (_, __, { session }) => {
+      if (!session?.user) {
+        throw new Error('Authentication required');
+      }
+
+      try {
+        const pipeline = aiPipelineService(prisma);
+        const report = await pipeline.generateProductivityReport(session.user.id);
+        return report.patterns || null;
+      } catch (error) {
+        console.error('Failed to get work patterns:', error);
+        return null;
+      }
+    },
+  }),
+
+  // Smart recommendations
+  smartRecommendations: t.field({
+    type: [SmartRecommendation],
+    authScopes: {
+      authenticated: true,
+    },
+    resolve: async (_, __, { session }) => {
+      if (!session?.user) {
+        throw new Error('Authentication required');
+      }
+
+      try {
+        const pipeline = aiPipelineService(prisma);
+        const report = await pipeline.generateProductivityReport(session.user.id);
+        return report.recommendations || [];
+      } catch (error) {
+        console.error('Failed to get smart recommendations:', error);
+        return [];
+      }
+    },
+  }),
+
+  // Burnout risk assessment
+  burnoutRiskAssessment: t.field({
+    type: BurnoutRiskAssessment,
+    nullable: true,
+    authScopes: {
+      authenticated: true,
+    },
+    resolve: async (_, __, { session }) => {
+      if (!session?.user) {
+        throw new Error('Authentication required');
+      }
+
+      try {
+        const pipeline = aiPipelineService(prisma);
+        const report = await pipeline.generateProductivityReport(session.user.id);
+        return report.burnoutRisk || null;
+      } catch (error) {
+        console.error('Failed to get burnout risk assessment:', error);
+        return null;
+      }
+    },
+  }),
+}));

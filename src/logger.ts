@@ -1,5 +1,5 @@
 import { inspect } from 'node:util'
-import { join } from 'node:path'
+import { join } from 'pathe'
 import { existsSync, mkdirSync } from 'node:fs'
 
 import {

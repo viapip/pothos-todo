@@ -4,6 +4,7 @@ import { tracingMiddleware } from '@/infrastructure/telemetry/TracingMiddleware.
 import { logger } from '@/logger.js';
 import type { GraphQLResolveInfo } from 'graphql';
 import { CacheManager } from '@/infrastructure/cache/CacheManager.js';
+import { hash } from 'ohash';
 
 // Define performance field options interface
 export interface PerformanceFieldOptions {
@@ -100,9 +101,9 @@ function wrapWithCache(resolve: any, cacheConfig: NonNullable<PerformanceFieldOp
     const cacheManager = CacheManager.getInstance();
 
     const fieldKey = `${info.parentType.name}:${info.fieldName}`;
-    const argsKey = JSON.stringify(args);
+    const argsHash = hash(args);
     const userKey = cacheConfig.scope === 'PRIVATE' && context.user ? `:user:${context.user.id}` : '';
-    const cacheKey = cacheConfig.key || `gql:${fieldKey}:${argsKey}${userKey}`;
+    const cacheKey = cacheConfig.key || `gql:${fieldKey}:${argsHash}${userKey}`;
 
     // Try cache
     const cached = await cacheManager.get(cacheKey);

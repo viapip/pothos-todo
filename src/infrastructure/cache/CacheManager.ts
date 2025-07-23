@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import type { Redis as RedisClient, RedisOptions } from 'ioredis';
+import { destr } from 'destr';
 import { getCacheConfig } from '@/config';
 import { logger } from '@/logger';
 
@@ -89,7 +90,7 @@ export class CacheManager {
       const value = await this.client!.get(key);
       if (!value) return null;
       
-      return JSON.parse(value) as T;
+      return destr<T>(value);
     } catch (error) {
       logger.error(`Cache get error for key ${key}:`, error);
       return null;

@@ -6,6 +6,7 @@ export class TodoAssigned extends DomainEvent {
     public readonly assignedTo: string,
     public readonly assignedBy: string,
     public readonly todoListId: string | null,
+    public readonly tags: string[],
     version: number = 1
   ) {
     super(aggregateId, 'TodoAssigned', version);
@@ -16,6 +17,7 @@ export class TodoAssigned extends DomainEvent {
       assignedTo: this.assignedTo,
       assignedBy: this.assignedBy,
       todoListId: this.todoListId,
+      tags: this.tags,
     };
   }
 }

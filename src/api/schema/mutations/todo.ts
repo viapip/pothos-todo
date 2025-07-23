@@ -4,25 +4,35 @@ import { CreateTodoCommand } from '../../../application/commands/CreateTodoComma
 import { UpdateTodoCommand } from '../../../application/commands/UpdateTodoCommand.js';
 import { CompleteTodoCommand } from '../../../application/commands/CompleteTodoCommand.js';
 import { DeleteTodoCommand } from '../../../application/commands/DeleteTodoCommand.js';
+import { Priority, TodoStatus } from '../enums.js';
+import { Priority as PrismaPriority, TodoStatus as PrismaTodoStatus } from '@prisma/client';
+import { aiPipelineService } from '@/infrastructure/ai/AIPipelineService.js';
+import prisma from '@/lib/prisma';
 
 const CreateTodoInput = builder.inputType('CreateTodoInput', {
   fields: (t) => ({
     title: t.string({ required: true }),
-    description: t.string({ required: false }),
-    priority: t.string({ required: false, defaultValue: 'medium' }),
+    priority: t.field({ type: Priority, required: false }),
     dueDate: t.field({ type: 'DateTime', required: false }),
     tags: t.stringList({ required: false }),
     listId: t.string({ required: false }),
+    description: t.string({ required: false }),
+    status: t.field({ type: TodoStatus, required: false }),
+    completedAt: t.field({ type: 'DateTime', required: false }),
+    enableAIAnalysis: t.boolean({ required: false, defaultValue: true }),
   }),
 });
 
 const UpdateTodoInput = builder.inputType('UpdateTodoInput', {
   fields: (t) => ({
     title: t.string({ required: false }),
-    description: t.string({ required: false }),
-    priority: t.string({ required: false }),
+    priority: t.field({ type: Priority, required: false }),
     dueDate: t.field({ type: 'DateTime', required: false }),
     tags: t.stringList({ required: false }),
+    listId: t.string({ required: false }),
+    status: t.field({ type: TodoStatus, required: false }),
+    description: t.string({ required: false }),
+    completedAt: t.field({ type: 'DateTime', required: false }),
   }),
 });
 
@@ -48,11 +58,17 @@ export const todoMutations = builder.mutationFields((t) => ({
       const command = CreateTodoCommand.create(
         todoId,
         args.input.title,
-        args.input.description || null,
         context.user.id,
         args.input.listId || null,
-        args.input.priority as any,
-        args.input.dueDate || null
+        args.input.priority as PrismaPriority,
+        args.input.dueDate as Date,
+        args.input.tags as string[],
+        args.input.description as string | null,
+        args.input.status as PrismaTodoStatus,
+        args.input.completedAt as Date | null,
+        new Date(),
+        new Date(),
+        1,
       );
 
       const todoAggregate = await handler.handle(command);
@@ -62,20 +78,27 @@ export const todoMutations = builder.mutationFields((t) => ({
         throw new Error('Failed to create todo');
       }
 
+      // Trigger AI analysis in the background (non-blocking) if enabled
+      if (args.input.enableAIAnalysis !== false) {
+        try {
+          const pipeline = aiPipelineService(prisma);
+          pipeline.analyzeTodoCreation(
+            todo.id,
+            todo.title,
+            todo.description,
+            context.user.id
+          ).catch(error => {
+            console.error('Background AI analysis failed:', error);
+          });
+        } catch (error) {
+          // Don't fail the todo creation if AI analysis fails
+          console.error('Failed to start AI analysis:', error);
+        }
+      }
+
       return todo;
     },
-    performance: {
-      rateLimit: {
-        limit: 10,
-        window: 60, // 10 todos per minute
-        keyType: 'user',
-      },
-      trace: {
-        enabled: true,
-        name: 'mutation.createTodo',
-      },
-      timeout: 3000, // 3 seconds
-    },
+
   }),
 
   updateTodo: t.prismaField({
@@ -101,10 +124,13 @@ export const todoMutations = builder.mutationFields((t) => ({
         context.user.id,
         {
           title: args.input.title || undefined,
-          description: args.input.description,
-          priority: args.input.priority as any,
-          dueDate: args.input.dueDate || undefined,
-          todoListId: undefined, // tags are not handled in UpdateTodoCommand
+          priority: args.input.priority as PrismaPriority | null,
+          status: args.input.status as PrismaTodoStatus | null,
+          dueDate: args.input.dueDate as Date | null,
+          tags: args.input.tags as string[] | undefined,
+          todoListId: args.input.listId || undefined,
+          description: args.input.description || undefined,
+          completedAt: args.input.completedAt as Date | null,
         }
       );
 
@@ -117,17 +143,7 @@ export const todoMutations = builder.mutationFields((t) => ({
 
       return todo;
     },
-    performance: {
-      rateLimit: {
-        limit: 20,
-        window: 60, // 20 updates per minute
-        keyType: 'user',
-      },
-      trace: {
-        enabled: true,
-        name: 'mutation.updateTodo',
-      },
-    },
+
   }),
 
   completeTodo: t.prismaField({
@@ -161,13 +177,7 @@ export const todoMutations = builder.mutationFields((t) => ({
 
       return todo;
     },
-    performance: {
-      rateLimit: {
-        limit: 30,
-        window: 60, // 30 completions per minute
-        keyType: 'user',
-      },
-    },
+
   }),
 
   deleteTodo: t.field({
@@ -194,16 +204,6 @@ export const todoMutations = builder.mutationFields((t) => ({
       await handler.handle(command);
       return true;
     },
-    performance: {
-      rateLimit: {
-        limit: 5,
-        window: 60, // 5 deletions per minute for safety
-        keyType: 'user',
-      },
-      trace: {
-        enabled: true,
-        name: 'mutation.deleteTodo',
-      },
-    },
+
   }),
 }));

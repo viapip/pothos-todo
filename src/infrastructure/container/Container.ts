@@ -19,7 +19,7 @@ import { MLPredictionService } from '../ai/MLPredictionService.js';
 
 export class Container {
   private static instance: Container;
-  
+
   private readonly _prisma: PrismaClient;
   private readonly _todoRepository: PrismaTodoRepository;
   private readonly _todoListRepository: PrismaTodoListRepository;
@@ -33,7 +33,7 @@ export class Container {
   private readonly _nlpService: NLPService;
   private readonly _ragService: RAGService;
   private readonly _mlPredictionService: MLPredictionService;
-  
+
   private readonly _createTodoHandler: CreateTodoHandler;
   private readonly _updateTodoHandler: UpdateTodoHandler;
   private readonly _completeTodoHandler: CompleteTodoHandler;
@@ -42,11 +42,11 @@ export class Container {
 
   private constructor() {
     this._prisma = new PrismaClient();
-    
+
     this._todoRepository = new PrismaTodoRepository(this._prisma);
     this._todoListRepository = new PrismaTodoListRepository(this._prisma);
     this._userRepository = new PrismaUserRepository(this._prisma);
-    
+
     this._eventStore = new PrismaEventStore(this._prisma);
     this._eventPublisher = new InMemoryEventPublisher(this._eventStore);
     this._eventHandlerRegistry = new EventHandlerRegistry(this._eventPublisher);
@@ -56,7 +56,7 @@ export class Container {
     this._nlpService = NLPService.getInstance();
     this._ragService = RAGService.getInstance(this._embeddingService, this._vectorStore);
     this._mlPredictionService = MLPredictionService.getInstance(this._prisma);
-    
+
     this._createTodoHandler = new CreateTodoHandler(this._todoRepository, this._eventPublisher);
     this._updateTodoHandler = new UpdateTodoHandler(this._todoRepository, this._eventPublisher);
     this._completeTodoHandler = new CompleteTodoHandler(this._todoRepository, this._eventPublisher);
@@ -70,11 +70,11 @@ export class Container {
       this._todoRepository
     );
   }
-  
+
   async initializeEmbeddingHandler(): Promise<void> {
     // Import dynamically to avoid circular dependency
     const { TodoEmbeddingHandler } = await import('../events/handlers/TodoEmbeddingHandler.js');
-    const handler = new TodoEmbeddingHandler(this._embeddingService, this._todoRepository);
+    const handler = new TodoEmbeddingHandler();
     this._eventHandlerRegistry.setEmbeddingHandler(handler);
   }
 

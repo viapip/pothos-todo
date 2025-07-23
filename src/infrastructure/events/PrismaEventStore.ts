@@ -36,13 +36,17 @@ export class PrismaEventStore implements EventStore {
     });
   }
 
-  async getEvents(aggregateId: string): Promise<StoredEvent[]> {
+  async getEvents(aggregateId: string, fromVersion: number = 0, limit?: number): Promise<DomainEvent[]> {
     const events = await this.prisma.domainEvent.findMany({
-      where: { aggregateId },
+      where: { 
+        aggregateId,
+        version: { gte: fromVersion }
+      },
       orderBy: { version: 'asc' },
+      take: limit,
     });
 
-    return events.map(this.mapToStoredEvent);
+    return events.map(this.mapToDomainEvent);
   }
 
   async getEventsFromVersion(aggregateId: string, fromVersion: number): Promise<StoredEvent[]> {
@@ -74,6 +78,30 @@ export class PrismaEventStore implements EventStore {
     return events.map(this.mapToStoredEvent);
   }
 
+  async getEventsAfterPosition(position: number, limit: number): Promise<DomainEvent[]> {
+    const events = await this.prisma.domainEvent.findMany({
+      skip: position,
+      take: limit,
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return events.map(this.mapToDomainEvent);
+  }
+
+  async getEventsByTimeRange(start: Date, end: Date): Promise<DomainEvent[]> {
+    const events = await this.prisma.domainEvent.findMany({
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return events.map(this.mapToDomainEvent);
+  }
+
   private mapToStoredEvent(event: PrismaDomainEvent): StoredEvent {
     const {
       eventData,
@@ -92,5 +120,23 @@ export class PrismaEventStore implements EventStore {
       version,
       createdAt,
     };
+  }
+
+  private mapToDomainEvent = (event: PrismaDomainEvent): DomainEvent => {
+    // Create a minimal DomainEvent implementation for stored events
+    class StoredDomainEvent extends DomainEvent {
+      getEventData(): Record<string, unknown> {
+        return event.eventData as Record<string, unknown>;
+      }
+    }
+
+    return new StoredDomainEvent(
+      event.aggregateId,
+      event.eventType,
+      event.version,
+      event.id,
+      '', // userId not stored in this implementation
+      event.createdAt
+    );
   }
 }

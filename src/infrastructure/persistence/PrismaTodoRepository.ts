@@ -1,12 +1,10 @@
-import { PrismaClient, type Todo as PrismaTodo } from '@prisma/client';
+import { PrismaClient, type Todo as PrismaTodo, Priority as PrismaPriority, TodoStatus as PrismaTodoStatus } from '@prisma/client';
 import type { TodoRepository } from '../../domain/repositories/TodoRepository.js';
 import { Todo } from '../../domain/aggregates/Todo.js';
-import { TodoStatus, TodoStatusEnum } from '../../domain/value-objects/TodoStatus.js';
-import { Priority, PriorityEnum } from '../../domain/value-objects/Priority.js';
 import { DueDate } from '../../domain/value-objects/DueDate.js';
 
 export class PrismaTodoRepository implements TodoRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClient) { }
 
   async findById(id: string): Promise<Todo | null> {
     const todoData = await this.prisma.todo.findUnique({
@@ -39,10 +37,9 @@ export class PrismaTodoRepository implements TodoRepository {
   async save(todo: Todo): Promise<void> {
     const data = {
       title: todo.title,
-      description: todo.description,
-      status: todo.status.value,
-      priority: todo.priority.value,
-      dueDate: todo.dueDate?.value || null,
+      status: todo.status,
+      priority: todo.priority || null,
+      dueDate: todo.dueDate || null,
       completedAt: todo.completedAt,
       userId: todo.userId,
       todoListId: todo.todoListId,
@@ -65,14 +62,13 @@ export class PrismaTodoRepository implements TodoRepository {
   }
 
   private mapToDomainEntity(todoData: PrismaTodo): Todo {
-    const status = new TodoStatus(todoData.status as TodoStatusEnum);
-    const priority = new Priority(todoData.priority as PriorityEnum);
+    const status = todoData.status as PrismaTodoStatus;
+    const priority = todoData.priority as PrismaPriority;
     const dueDate = todoData.dueDate ? new DueDate(todoData.dueDate) : null;
 
     return new Todo(
       todoData.id,
       todoData.title,
-      todoData.description,
       todoData.userId,
       todoData.todoListId,
       status,

@@ -1,6 +1,6 @@
 import { OpenAI } from 'openai';
 import { logger } from '@/logger';
-import { PrismaClient, type Embedding } from '@prisma/client';
+import { PrismaClient, type Embedding, Priority as PrismaPriority, TodoStatus as PrismaTodoStatus } from '@prisma/client';
 import { VectorStore } from './VectorStore';
 
 export interface EmbeddingOptions {
@@ -182,12 +182,11 @@ export class EmbeddingService {
   public async embedTodo(
     todoId: string,
     title: string,
-    description: string | null,
     userId: string,
-    status: string,
-    priority: string
+    status: PrismaTodoStatus,
+    priority: PrismaPriority | null
   ): Promise<Embedding> {
-    const content = `Todo: ${title}${description ? '. ' + description : ''}`;
+    const content = `Todo: ${title}`;
     const metadata = {
       userId,
       status,
@@ -201,10 +200,9 @@ export class EmbeddingService {
   public async embedTodoList(
     todoListId: string,
     title: string,
-    description: string | null,
     userId: string
   ): Promise<Embedding> {
-    const content = `Todo List: ${title}${description ? '. ' + description : ''}`;
+    const content = `Todo List: ${title}`;
     const metadata = {
       userId,
       type: 'todoList',
