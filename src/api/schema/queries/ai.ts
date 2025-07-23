@@ -41,6 +41,10 @@ builder.queryFields((t) => ({
       input: t.arg({ type: SemanticSearchInput, required: true }),
     },
     authScopes: { authenticated: true },
+    complexity: (args) => {
+      const limit = args.input.limit || 10;
+      return 5 + limit * 2; // Base cost 5 + 2 per result (embedding calculation)
+    },
     resolve: async (root, args, context) => {
       if (!context.user) {
         throw new Error('Not authenticated');
@@ -80,6 +84,10 @@ builder.queryFields((t) => ({
       limit: t.arg.int({ required: false, defaultValue: 5 }),
     },
     authScopes: { authenticated: true },
+    complexity: (args, childComplexity) => {
+      const limit = args.limit || 5;
+      return 5 + limit * (2 + childComplexity); // Base 5 + embedding cost + child queries
+    },
     resolve: async (query, root, args, context) => {
       if (!context.user) {
         throw new Error('Not authenticated');
@@ -143,6 +151,7 @@ builder.queryFields((t) => ({
       limit: t.arg.int({ required: false, defaultValue: 5 }),
     },
     authScopes: { authenticated: true },
+    complexity: 20, // Fixed high cost for AI processing
     resolve: async (root, args, context) => {
       if (!context.user) {
         throw new Error('Not authenticated');
@@ -263,6 +272,7 @@ builder.queryFields((t) => ({
     authScopes: {
       authenticated: true,
     },
+    complexity: 50, // Very expensive AI analysis
     resolve: async (_, { input }, { session }) => {
       if (!session?.user) {
         throw new Error('Authentication required');

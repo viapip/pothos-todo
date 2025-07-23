@@ -17,19 +17,20 @@ import type { SessionWithUser } from '@/lib/auth';
 import type { H3Event } from 'h3';
 import PrismaUtils from '@pothos/plugin-prisma-utils';
 import DirectivesPlugin from '@pothos/plugin-directives';
-import { performancePlugin } from './plugins/performance.js';
 import type { PerformanceFieldOptions } from './plugins/performance.js';
+import type { DataLoaders } from '../dataloaders/index.js';
 
 export interface Context {
   user: User | null;
   container: Container;
   session: SessionWithUser | null;
-  h3Event?: H3Event
+  h3Event?: H3Event;
+  loaders: DataLoaders;
 }
 
 // Extend Pothos field options with performance options
 declare module '@pothos/core' {
-  export interface FieldOptions<Types extends SchemaTypes = SchemaTypes, ParentShape = unknown, Type = unknown, Nullable = false, Args extends {} = {}, ResolveReturnShape = unknown> {
+  export interface FieldOptions<Types extends SchemaTypes, ParentShape = unknown, Type = unknown, Nullable = false, Args extends {} = {}, ResolveReturnShape = unknown> {
     performance?: PerformanceFieldOptions;
   }
 }
@@ -41,10 +42,11 @@ export const builder = new SchemaBuilder<{
     DateTime: { Input: Date; Output: Date };
     JSON: { Input: any; Output: any };
   };
-  AuthScopes: {
-    authenticated: boolean;
-    admin: boolean;
-  };
+  // Temporarily removed AuthScopes to disable scopeAuth
+  // AuthScopes: {
+  //   authenticated: boolean;
+  //   admin: boolean;
+  // };
 }>({
   plugins: [
     PrismaPlugin,
@@ -64,11 +66,11 @@ export const builder = new SchemaBuilder<{
     client: prisma,
     dmmf: undefined,
   },
-  validation: {
+  validationOptions: {
     // Validation will run for all fields by default
     validationError: (errors, args, context, info) => {
       // Custom error formatting
-      return new Error(`Validation failed: ${errors.map(err => err.message).join(', ')}`);
+      return new Error(`Validation failed: ${errors.issues.map(err => err.message).join(', ')}`);
     },
   },
   scopeAuth: {

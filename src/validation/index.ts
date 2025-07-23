@@ -7,7 +7,7 @@ export type { ZodError, ZodIssue } from 'zod';
 
 // Custom error formatter
 export function formatZodError(error: import('zod').ZodError): string {
-  return error.errors
+  return error.issues
     .map(err => `${err.path.join('.')}: ${err.message}`)
     .join(', ');
 }
@@ -19,6 +19,6 @@ export class ValidationError extends Error {
   constructor(error: import('zod').ZodError) {
     super(formatZodError(error));
     this.name = 'ValidationError';
-    this.errors = error.errors;
+    this.errors = error.issues;
   }
 }

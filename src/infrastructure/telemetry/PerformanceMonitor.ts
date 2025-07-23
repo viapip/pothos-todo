@@ -29,8 +29,15 @@ interface QueryPerformance {
 export class PerformanceMonitor extends EventEmitter {
   private static instance: PerformanceMonitor;
   private meter = metrics.getMeter('pothos-todo-performance', '1.0.0');
-  private cacheManager = CacheManager.getInstance();
-  
+  private cacheManager?: CacheManager;
+
+  private getCacheManager() {
+    if (!this.cacheManager) {
+      this.cacheManager = CacheManager.getInstance();
+    }
+    return this.cacheManager;
+  }
+
   // Metrics instruments
   private requestCounter;
   private errorCounter;
@@ -39,55 +46,55 @@ export class PerformanceMonitor extends EventEmitter {
   private cacheMissCounter;
   private activeConnectionsGauge;
   private queryComplexityHistogram;
-  
+
   // In-memory storage for analysis
   private responseTimes: number[] = [];
   private slowQueryThreshold = 1000; // 1 second
   private metricsWindow = 300000; // 5 minutes
-  
+
   private constructor() {
     super();
-    
+
     // Initialize metrics
     this.requestCounter = this.meter.createCounter('graphql_requests_total', {
       description: 'Total number of GraphQL requests',
     });
-    
+
     this.errorCounter = this.meter.createCounter('graphql_errors_total', {
       description: 'Total number of GraphQL errors',
     });
-    
+
     this.responseTimeHistogram = this.meter.createHistogram('graphql_request_duration_ms', {
       description: 'GraphQL request duration in milliseconds',
     });
-    
+
     this.cacheHitCounter = this.meter.createCounter('cache_hits_total', {
       description: 'Total number of cache hits',
     });
-    
+
     this.cacheMissCounter = this.meter.createCounter('cache_misses_total', {
       description: 'Total number of cache misses',
     });
-    
+
     this.activeConnectionsGauge = this.meter.createUpDownCounter('websocket_active_connections', {
       description: 'Number of active WebSocket connections',
     });
-    
+
     this.queryComplexityHistogram = this.meter.createHistogram('graphql_query_complexity', {
       description: 'GraphQL query complexity score',
     });
-    
+
     // Start periodic metrics aggregation
     this.startMetricsAggregation();
   }
-  
+
   static getInstance(): PerformanceMonitor {
     if (!PerformanceMonitor.instance) {
       PerformanceMonitor.instance = new PerformanceMonitor();
     }
     return PerformanceMonitor.instance;
   }
-  
+
   /**
    * Record a GraphQL request
    */
@@ -97,58 +104,58 @@ export class PerformanceMonitor extends EventEmitter {
       operation_name: performance.operationName || 'anonymous',
       has_errors: performance.errors ? 'true' : 'false',
     };
-    
+
     // Update counters
     this.requestCounter.add(1, labels);
     if (performance.errors) {
       this.errorCounter.add(1, labels);
     }
-    
+
     // Record response time
     this.responseTimeHistogram.record(performance.duration, labels);
     this.responseTimes.push(performance.duration);
-    
+
     // Record complexity if available
     if (performance.complexity) {
       this.queryComplexityHistogram.record(performance.complexity, labels);
     }
-    
+
     // Check for slow queries
     if (performance.duration > this.slowQueryThreshold) {
       this.handleSlowQuery(performance);
     }
-    
+
     // Emit event for real-time monitoring
     this.emit('request', performance);
   }
-  
+
   /**
    * Record cache hit/miss
    */
   recordCacheHit(hit: boolean, key: string) {
     const labels = { cache_key_prefix: key.split(':')[0] };
-    
+
     if (hit) {
       this.cacheHitCounter.add(1, labels);
     } else {
       this.cacheMissCounter.add(1, labels);
     }
   }
-  
+
   /**
    * Update active connections count
    */
   updateActiveConnections(delta: number) {
     this.activeConnectionsGauge.add(delta);
   }
-  
+
   /**
    * Get current performance metrics
    */
   async getMetrics(): Promise<PerformanceMetrics> {
     const cacheStats = await this.getCacheStats();
     const responseTimes = this.getRecentResponseTimes();
-    
+
     return {
       requestCount: await this.getMetricValue('graphql_requests_total'),
       errorCount: await this.getMetricValue('graphql_errors_total'),
@@ -160,7 +167,7 @@ export class PerformanceMonitor extends EventEmitter {
       activeConnections: await this.getMetricValue('websocket_active_connections'),
     };
   }
-  
+
   /**
    * Detect performance anomalies
    */
@@ -173,7 +180,7 @@ export class PerformanceMonitor extends EventEmitter {
   }>> {
     const anomalies = [];
     const metrics = await this.getMetrics();
-    
+
     // High error rate
     const errorRate = metrics.errorCount / metrics.requestCount;
     if (errorRate > 0.05) { // 5% error rate
@@ -185,7 +192,7 @@ export class PerformanceMonitor extends EventEmitter {
         threshold: 0.05,
       });
     }
-    
+
     // Slow response times
     if (metrics.p95ResponseTime > 2000) { // 2 seconds
       anomalies.push({
@@ -196,7 +203,7 @@ export class PerformanceMonitor extends EventEmitter {
         threshold: 2000,
       });
     }
-    
+
     // Low cache hit rate
     if (metrics.cacheHitRate < 0.7) { // 70% hit rate
       anomalies.push({
@@ -207,7 +214,7 @@ export class PerformanceMonitor extends EventEmitter {
         threshold: 0.7,
       });
     }
-    
+
     // Too many slow queries
     if (metrics.slowQueries.length > 10) {
       anomalies.push({
@@ -218,10 +225,10 @@ export class PerformanceMonitor extends EventEmitter {
         threshold: 10,
       });
     }
-    
+
     return anomalies;
   }
-  
+
   /**
    * Get query complexity analysis
    */
@@ -235,14 +242,14 @@ export class PerformanceMonitor extends EventEmitter {
     }>;
   }> {
     const complexities = await this.getRecentComplexities();
-    
+
     return {
       averageComplexity: this.calculateAverage(complexities),
       maxComplexity: Math.max(...complexities, 0),
       complexQueries: await this.getComplexQueries(),
     };
   }
-  
+
   private startMetricsAggregation() {
     // Clean up old metrics every minute
     setInterval(() => {
@@ -252,59 +259,59 @@ export class PerformanceMonitor extends EventEmitter {
       });
     }, 60000);
   }
-  
+
   private async handleSlowQuery(performance: QueryPerformance) {
     const key = `slow_queries:${Date.now()}`;
-    await this.cacheManager.set(key, {
+    await this.getCacheManager().set(key, {
       query: performance.query,
       duration: performance.duration,
       timestamp: new Date(),
       operationName: performance.operationName,
     }, { ttl: 3600 }); // Keep for 1 hour
-    
+
     logger.warn('Slow query detected', {
       duration: performance.duration,
       operationName: performance.operationName,
     });
-    
+
     this.emit('slowQuery', performance);
   }
-  
+
   private getOperationType(query: string): string {
     if (query.trim().startsWith('query')) return 'query';
     if (query.trim().startsWith('mutation')) return 'mutation';
     if (query.trim().startsWith('subscription')) return 'subscription';
     return 'unknown';
   }
-  
+
   private getRecentResponseTimes(): number[] {
     return this.responseTimes.slice(-1000); // Last 1000 requests
   }
-  
+
   private calculateAverage(values: number[]): number {
     if (values.length === 0) return 0;
     return values.reduce((a, b) => a + b, 0) / values.length;
   }
-  
+
   private calculatePercentile(values: number[], percentile: number): number {
     if (values.length === 0) return 0;
     const sorted = [...values].sort((a, b) => a - b);
     const index = Math.ceil((percentile / 100) * sorted.length) - 1;
     return sorted[index];
   }
-  
+
   private async getMetricValue(name: string): Promise<number> {
     // In a real implementation, this would query the metrics backend
     // For now, return a placeholder
     return 0;
   }
-  
+
   private async getCacheStats(): Promise<{ hitRate: number }> {
     // Calculate hit rate from counters
     // In a real implementation, this would use the actual counter values
     return { hitRate: 0.85 }; // Placeholder
   }
-  
+
   private async getSlowQueries(): Promise<Array<{
     query: string;
     duration: number;
@@ -314,12 +321,12 @@ export class PerformanceMonitor extends EventEmitter {
     // For now, return placeholder data
     return [];
   }
-  
+
   private async getRecentComplexities(): Promise<number[]> {
     // In a real implementation, this would query stored complexity values
     return [10, 15, 20, 25, 30, 35, 40]; // Placeholder
   }
-  
+
   private async getComplexQueries(): Promise<Array<{
     query: string;
     complexity: number;

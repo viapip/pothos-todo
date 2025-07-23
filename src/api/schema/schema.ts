@@ -18,6 +18,7 @@ import './types/TodoList.js';
 import './types/Session.js';
 import './types/ai.js';
 import './types/performance.js';
+// import './types/TodoWithDataLoader.js';
 import './mutations/TodoListMutations.js';
 import './mutations/ai.js';
 import './queries/ai.js';

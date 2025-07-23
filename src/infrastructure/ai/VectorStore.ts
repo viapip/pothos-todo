@@ -1,5 +1,5 @@
-import { QdrantClient } from '@qdrant/js-client-rest';
 import { logger } from '@/logger';
+import { QdrantClient } from '@qdrant/js-client-rest';
 
 export interface VectorSearchOptions {
   limit?: number;
@@ -164,5 +164,17 @@ export class VectorStore {
       logger.error(`Failed to get vector by id ${id}:`, error);
       return null;
     }
+  }
+
+  public async getCollection(name: string) {
+    if (!this.client) throw new Error('Vector store not connected');
+    const collection = await this.client.getCollection(name);
+    return collection;
+  }
+
+  public async listCollections() {
+    if (!this.client) throw new Error('Vector store not connected');
+    const collections = await this.client.getCollections();
+    return collections.collections.map((collection: { name: string }) => collection.name);
   }
 }

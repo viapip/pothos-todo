@@ -12,6 +12,11 @@ export const todoQueries = builder.queryFields((t) => ({
     authScopes: {
       authenticated: true,
     },
+    cacheControl: {
+      maxAge: 60, // Cache individual todos for 1 minute
+      scope: 'PRIVATE',
+    },
+    complexity: 1, // Simple lookup
     resolve: async (query, root, args, context) => {
       if (!context.user) {
         throw new Error('Not authenticated');
@@ -38,6 +43,15 @@ export const todoQueries = builder.queryFields((t) => ({
     },
     authScopes: {
       authenticated: true,
+    },
+    cacheControl: {
+      maxAge: 30, // Cache todo lists for 30 seconds
+      scope: 'PRIVATE',
+    },
+    complexity: (args, childComplexity) => {
+      const limit = args.limit || 50;
+      // Base cost + (limit * child complexity)
+      return 1 + limit * childComplexity;
     },
     resolve: async (query, root, args, context) => {
       if (!context.user) {
@@ -76,6 +90,10 @@ export const todoQueries = builder.queryFields((t) => ({
 
   todoStats: t.field({
     type: builder.objectType('TodoStats', {
+      cacheControl: {
+        maxAge: 300, // Cache stats for 5 minutes
+        scope: 'PRIVATE',
+      },
       fields: (t) => ({
         total: t.int({
           resolve: (stats) => stats.total,
@@ -116,6 +134,11 @@ export const todoQueries = builder.queryFields((t) => ({
     authScopes: {
       authenticated: true,
     },
+    cacheControl: {
+      maxAge: 300, // Cache stats for 5 minutes
+      scope: 'PRIVATE',
+    },
+    complexity: 10, // Fixed cost for stats calculation
     resolve: async (root, args, context) => {
       if (!context.user) {
         throw new Error('Not authenticated');

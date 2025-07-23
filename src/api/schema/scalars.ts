@@ -8,3 +8,5 @@ builder.scalarType('JSON', {
   parseLiteral: GraphQLJSONObject.parseLiteral,
   description: 'The `JSON` scalar type represents JSON values as specified by ECMA-404.',
 });
+
+// Note: DateTime scalar is automatically provided by the builder configuration

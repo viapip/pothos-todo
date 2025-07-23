@@ -37,7 +37,7 @@ export const UserActivityPayload = builder.objectType('UserActivityPayload', {
     }),
     timestamp: t.field({
       type: 'DateTime',
-      resolve: () => new Date(),
+      resolve: (payload) => payload.timestamp || new Date(),
     }),
   }),
 });

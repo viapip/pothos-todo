@@ -4,6 +4,7 @@ import { makeServer } from 'graphql-ws';
 import { schema } from '../api/schema/schema.js';
 import { Container } from '../infrastructure/container/Container.js';
 import { initContextCache } from '@pothos/core';
+import { createDataLoaders } from '../api/dataloaders/index.js';
 import { logger } from '../logger.js';
 import { verifySessionToken } from '../lib/auth/lucia.js';
 import { PubSubManager } from '../infrastructure/realtime/PubSubManager.js';
@@ -17,35 +18,41 @@ interface GraphQLPeer extends Peer {
   handleMessage?: (data: string) => void;
 }
 
-const container = Container.getInstance();
-const pubsubManager = PubSubManager.getInstance();
+function getContainer() {
+  return Container.getInstance();
+}
+
+function getPubSubManager() {
+  return PubSubManager.getInstance();
+}
 
 // Create the GraphQL WebSocket server configuration
 const createGraphQLHandler = (peer: GraphQLPeer) => {
   return makeServer({
     schema,
-    
+
     async context(ctx, msg, args) {
       const contextCache = initContextCache();
-      
+
       return {
         ...contextCache,
-        container,
+        container: getContainer(),
         user: peer.user || null,
         session: peer.sessionId ? { id: peer.sessionId, user: peer.user } : null,
         connectionId: peer.id,
+        loaders: createDataLoaders(),
       } as Context;
     },
-    
+
     async onConnect(ctx) {
       logger.info('GraphQL WebSocket client connected', {
         peerId: peer.id,
         userId: peer.userId,
       });
-      
+
       return true; // Accept connection
     },
-    
+
     async onDisconnect(ctx, code, reason) {
       logger.info('GraphQL WebSocket client disconnected', {
         peerId: peer.id,
@@ -54,20 +61,20 @@ const createGraphQLHandler = (peer: GraphQLPeer) => {
         reason,
       });
     },
-    
+
     async onSubscribe(ctx, msg) {
       logger.info('GraphQL subscription started', {
         peerId: peer.id,
         userId: peer.userId,
-        operationName: msg.payload.operationName,
+        operationName: typeof msg === 'object' && msg && 'payload' in msg ? (msg.payload as any)?.operationName : undefined,
       });
     },
-    
+
     async onComplete(ctx, msg) {
       logger.info('GraphQL subscription completed', {
         peerId: peer.id,
         userId: peer.userId,
-        id: msg.id,
+        id: typeof msg === 'object' && msg && 'id' in msg ? (msg as any).id : undefined,
       });
     },
   });
@@ -77,13 +84,13 @@ export const graphqlWebSocketHandler = defineWebSocketHandler({
   async upgrade(request) {
     // Extract session token from cookies or subprotocol
     const cookies = parseCookies(request.headers.get('cookie') || '');
-    const sessionToken = cookies['auth-session'] || extractTokenFromSubprotocol(request);
-    
+    const sessionToken = cookies['auth-session'] || extractTokenFromSubprotocol(request as Request);
+
     if (!sessionToken) {
       logger.warn('GraphQL WebSocket upgrade attempt without session token');
       return { status: 401, statusText: 'Unauthorized' };
     }
-    
+
     try {
       // Verify the session token
       const sessionData = await verifySessionToken(sessionToken);
@@ -92,21 +99,21 @@ export const graphqlWebSocketHandler = defineWebSocketHandler({
         return { status: 401, statusText: 'Unauthorized' };
       }
       const { user, session } = sessionData;
-      
+
       if (!user || !session) {
         logger.warn('Invalid session token for GraphQL WebSocket upgrade');
         return { status: 401, statusText: 'Unauthorized' };
       }
-      
+
       // Add user info to request headers for later access
       request.headers.set('x-user-id', user.id);
       request.headers.set('x-session-id', session.id);
-      
+
       logger.info('GraphQL WebSocket upgrade authenticated', {
         userId: user.id,
         sessionId: session.id,
       });
-      
+
       // Accept the graphql-ws protocol
       const protocols = request.headers.get('sec-websocket-protocol');
       if (protocols?.includes('graphql-ws')) {
@@ -116,7 +123,7 @@ export const graphqlWebSocketHandler = defineWebSocketHandler({
           },
         };
       }
-      
+
       return; // Allow upgrade
     } catch (error) {
       logger.error('GraphQL WebSocket authentication error', { error });
@@ -128,36 +135,36 @@ export const graphqlWebSocketHandler = defineWebSocketHandler({
     // Get user info from headers set during upgrade
     const userId = peer.request?.headers.get('x-user-id');
     const sessionId = peer.request?.headers.get('x-session-id');
-    
+
     if (!userId || !sessionId) {
       peer.close(1008, 'Authentication required');
       return;
     }
-    
+
     // Store authenticated info on peer
     peer.userId = userId;
     peer.sessionId = sessionId;
-    
+
     // Get user details
-    const user = await container.prisma.user.findUnique({
+    const user = await getContainer().prisma.user.findUnique({
       where: { id: userId },
     });
-    
+
     if (user) {
       peer.user = user;
-      
+
       // Track connection
-      pubsubManager.addUserConnection(userId, peer.id);
-      await pubsubManager.publishUserOnline(userId, user);
+      getPubSubManager().addUserConnection(userId, peer.id);
+      await getPubSubManager().publishUserOnline(userId, user);
     }
-    
+
     // Create graphql-ws handler for this peer
     const graphqlHandler = createGraphQLHandler(peer);
-    
+
     // Set up the connection with graphql-ws
     const closed = graphqlHandler.opened(
       {
-        protocol: peer.protocol || 'graphql-ws',
+        protocol: 'graphql-ws',
         send: (data) => {
           peer.send(data);
         },
@@ -171,9 +178,11 @@ export const graphqlWebSocketHandler = defineWebSocketHandler({
       },
       { peer }
     );
-    
-    // Store the close handler
-    peer.on('close', () => closed(3000, 'Normal closure'));
+
+    // Store the close handler (if peer supports event handling)
+    if ('on' in peer && typeof peer.on === 'function') {
+      peer.on('close', () => closed(3000, 'Normal closure'));
+    }
   },
 
   async message(peer: GraphQLPeer, message: Message) {
@@ -181,7 +190,7 @@ export const graphqlWebSocketHandler = defineWebSocketHandler({
       peer.close(1008, 'Not initialized');
       return;
     }
-    
+
     // Forward message to graphql-ws
     const messageStr = typeof message === 'string' ? message : message.toString();
     peer.handleMessage(messageStr);
@@ -194,14 +203,14 @@ export const graphqlWebSocketHandler = defineWebSocketHandler({
       code: details.code,
       reason: details.reason,
     });
-    
+
     // Clean up connection tracking
     if (peer.userId) {
-      pubsubManager.removeUserConnection(peer.userId, peer.id);
-      
+      getPubSubManager().removeUserConnection(peer.userId, peer.id);
+
       // If user has no more connections, publish offline event
-      if (pubsubManager.getUserConnectionCount(peer.userId) === 0) {
-        await pubsubManager.publishUserOffline(peer.userId);
+      if (getPubSubManager().getUserConnectionCount(peer.userId) === 0) {
+        await getPubSubManager().publishUserOffline(peer.userId);
       }
     }
   },
@@ -217,27 +226,27 @@ export const graphqlWebSocketHandler = defineWebSocketHandler({
 
 function parseCookies(cookieHeader: string): Record<string, string> {
   const cookies: Record<string, string> = {};
-  
+
   cookieHeader.split(';').forEach(cookie => {
     const [name, value] = cookie.trim().split('=');
     if (name && value) {
       cookies[name] = decodeURIComponent(value);
     }
   });
-  
+
   return cookies;
 }
 
 function extractTokenFromSubprotocol(request: Request): string | null {
   const protocols = request.headers.get('sec-websocket-protocol');
   if (!protocols) return null;
-  
+
   // Look for auth token in subprotocols (format: "graphql-ws,auth-TOKEN")
   const authProtocol = protocols.split(',').find(p => p.trim().startsWith('auth-'));
   if (authProtocol) {
     return authProtocol.trim().substring(5); // Remove 'auth-' prefix
   }
-  
+
   return null;
 }
 

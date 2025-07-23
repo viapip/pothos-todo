@@ -23,7 +23,7 @@ export function securityHeaders(event: H3Event): void {
   // Permissions-Policy
   res.setHeader(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), interest-cohort=()'
+    'camera=(), microphone=(), geolocation=()'
   );
 
   // Strict-Transport-Security (HSTS) - only in production with HTTPS
@@ -43,11 +43,36 @@ export function contentSecurityPolicy(event: H3Event): void {
   const nonce = generateNonce();
   event.context.nonce = nonce;
 
+  // Development-friendly CSP - very permissive in development
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  
+  if (isDevelopment) {
+    // Very permissive CSP for development
+    const directives = [
+      `default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: *`,
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' *`,
+      `style-src 'self' 'unsafe-inline' *`,
+      `font-src 'self' data: *`,
+      `img-src 'self' data: *`,
+      `connect-src 'self' ws: wss: *`,
+      `frame-ancestors 'none'`,
+      `base-uri 'self'`,
+      `form-action 'self'`,
+    ];
+    
+    event.node.res.setHeader(
+      'Content-Security-Policy',
+      directives.join('; ')
+    );
+    return;
+  }
+  
+  // Production CSP
   const directives = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`,
-    `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
-    `font-src 'self' https://fonts.gstatic.com`,
+    `script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net https://unpkg.com`,
+    `style-src 'self' 'nonce-${nonce}' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com`,
+    `font-src 'self' https://fonts.gstatic.com https://unpkg.com data:`,
     `img-src 'self' data: https:`,
     `connect-src 'self' https://api.github.com https://www.googleapis.com`,
     `frame-ancestors 'none'`,

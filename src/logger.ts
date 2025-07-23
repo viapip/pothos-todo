@@ -36,7 +36,6 @@ export function createLogger(): ConsolaInstance {
   // Create consola instance with configuration
   const logger = createConsola({
     level: mapLogLevel(loggerConfig.level),
-    fancy: isDevelopment && loggerConfig.console?.enabled !== false,
     formatOptions: {
       date: true,
       colors: true,

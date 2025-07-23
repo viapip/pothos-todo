@@ -12,9 +12,15 @@ interface AuthenticatedPeer extends Peer {
   user?: any;
 }
 
-const pubsubManager = PubSubManager.getInstance();
-const container = Container.getInstance();
 const activePeers = new Map<string, AuthenticatedPeer>();
+
+function getPubSubManager() {
+  return PubSubManager.getInstance();
+}
+
+function getContainer() {
+  return Container.getInstance();
+}
 
 export const websocketHandler = defineWebSocketHandler({
   async upgrade(request) {
@@ -73,16 +79,16 @@ export const websocketHandler = defineWebSocketHandler({
 
     // Track the peer
     activePeers.set(peer.id, peer);
-    pubsubManager.addUserConnection(userId, peer.id);
+    getPubSubManager().addUserConnection(userId, peer.id);
 
     // Get user details and publish online event
-    const user = await container.prisma.user.findUnique({
+    const user = await getContainer().prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (user) {
       peer.user = user;
-      await pubsubManager.publishUserOnline(userId, user);
+      await getPubSubManager().publishUserOnline(userId, user);
     }
 
     logger.info('WebSocket connection opened', {
@@ -139,14 +145,14 @@ export const websocketHandler = defineWebSocketHandler({
         case 'typing':
           // Handle typing indicators
           if (data.listId) {
-            await pubsubManager.publishUserTyping(peer.userId, data.listId, data.todoId);
+            await getPubSubManager().publishUserTyping(peer.userId, data.listId, data.todoId);
           }
           break;
 
         case 'activity':
           // Handle user activity updates
           if (data.activity) {
-            await pubsubManager.publishUserActivity(peer.userId, data.activity, data.metadata);
+            await getPubSubManager().publishUserActivity(peer.userId, data.activity, data.metadata);
           }
           break;
 
@@ -174,11 +180,11 @@ export const websocketHandler = defineWebSocketHandler({
     activePeers.delete(peer.id);
 
     if (peer.userId) {
-      pubsubManager.removeUserConnection(peer.userId, peer.id);
+      getPubSubManager().removeUserConnection(peer.userId, peer.id);
 
       // If user has no more connections, publish offline event
-      if (pubsubManager.getUserConnectionCount(peer.userId) === 0) {
-        await pubsubManager.publishUserOffline(peer.userId);
+      if (getPubSubManager().getUserConnectionCount(peer.userId) === 0) {
+        await getPubSubManager().publishUserOffline(peer.userId);
       }
     }
   },

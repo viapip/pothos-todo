@@ -81,7 +81,7 @@ function handleH3Error(error: H3Error, event: H3Event): ErrorResponse {
       message: error.statusMessage || 'An error occurred',
       code: 'H3_ERROR',
       statusCode,
-      metadata: error.data,
+      metadata: error.data as Record<string, any> | undefined,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     },
   };

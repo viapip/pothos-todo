@@ -1,7 +1,7 @@
 import Redis from 'ioredis';
 import type { Redis as RedisClient, RedisOptions } from 'ioredis';
 import { destr } from 'destr';
-import { getCacheConfig } from '@/config';
+import { env } from '@/config/env.validation.js';
 import { logger } from '@/logger';
 
 export interface CacheOptions {
@@ -12,10 +12,9 @@ export interface CacheOptions {
 export class CacheManager {
   private static instance: CacheManager | null = null;
   private client: RedisClient | null = null;
-  private isConnected = false;
-  private config = getCacheConfig();
+  public isConnected = false;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): CacheManager {
     if (!CacheManager.instance) {
@@ -25,17 +24,17 @@ export class CacheManager {
   }
 
   public async connect(): Promise<void> {
-    if (this.isConnected || !this.config.enabled) {
+    if (this.isConnected || !env.CACHE_ENABLED) {
       return;
     }
 
     try {
       const options: RedisOptions = {
-        host: this.config.redis.host,
-        port: this.config.redis.port,
-        password: this.config.redis.password,
-        db: this.config.redis.db,
-        keyPrefix: this.config.redis.keyPrefix,
+        host: env.REDIS_HOST,
+        port: env.REDIS_PORT,
+        password: env.REDIS_PASSWORD,
+        db: env.REDIS_DB,
+        keyPrefix: env.REDIS_KEY_PREFIX,
         retryStrategy: (times: number) => {
           const delay = Math.min(times * 50, 2000);
           return delay;
@@ -67,7 +66,7 @@ export class CacheManager {
     } catch (error) {
       logger.error('Failed to connect to Redis:', error);
       // Don't throw - cache should be optional
-      this.config.enabled = false;
+      // Cache disabled due to connection error
     }
   }
 
@@ -89,7 +88,7 @@ export class CacheManager {
     try {
       const value = await this.client!.get(key);
       if (!value) return null;
-      
+
       return destr<T>(value);
     } catch (error) {
       logger.error(`Cache get error for key ${key}:`, error);
@@ -101,16 +100,16 @@ export class CacheManager {
    * Set a value in cache
    */
   public async set<T = any>(
-    key: string, 
-    value: T, 
+    key: string,
+    value: T,
     options?: CacheOptions
   ): Promise<boolean> {
     if (!this.isEnabled()) return false;
 
     try {
-      const ttl = options?.ttl || this.config.redis.ttl;
+      const ttl = options?.ttl || env.CACHE_DEFAULT_TTL;
       const serialized = JSON.stringify(value);
-      
+
       if (ttl > 0) {
         await this.client!.setex(key, ttl, serialized);
       } else {
@@ -167,13 +166,13 @@ export class CacheManager {
 
     try {
       const keys = new Set<string>();
-      
+
       // Get all keys associated with each tag
       for (const tag of tags) {
         const tagKey = `tag:${tag}`;
         const taggedKeys = await this.client!.smembers(tagKey);
         taggedKeys.forEach(key => keys.add(key));
-        
+
         // Remove the tag set
         await this.client!.del(tagKey);
       }
@@ -218,7 +217,7 @@ export class CacheManager {
    * Check if cache is enabled and connected
    */
   private isEnabled(): boolean {
-    return this.config.enabled && this.isConnected && this.client !== null;
+    return env.CACHE_ENABLED && this.isConnected && this.client !== null;
   }
 
   /**
@@ -226,14 +225,14 @@ export class CacheManager {
    */
   private async addToTags(key: string, tags: string[]): Promise<void> {
     const pipeline = this.client!.pipeline();
-    
+
     for (const tag of tags) {
       const tagKey = `tag:${tag}`;
       pipeline.sadd(tagKey, key);
       // Set expiration on tag set to match max TTL
-      pipeline.expire(tagKey, this.config.redis.ttl * 2);
+      pipeline.expire(tagKey, env.CACHE_DEFAULT_TTL * 2);
     }
-    
+
     await pipeline.exec();
   }
 

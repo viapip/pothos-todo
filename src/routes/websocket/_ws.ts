@@ -29,20 +29,20 @@ export default defineWebSocketHandler({
 
     try {
       // Verify the session token
-      const { user, session } = await verifySessionToken(sessionToken);
+      const sessionData = await verifySessionToken(sessionToken);
 
-      if (!user || !session) {
+      if (!sessionData) {
         logger.warn('Invalid session token for WebSocket upgrade');
         return { status: 401, statusText: 'Unauthorized' };
       }
 
       // Add user info to request headers for later access
-      request.headers.set('x-user-id', user.id);
-      request.headers.set('x-session-id', session.id);
+      request.headers.set('x-user-id', sessionData.user.id);
+      request.headers.set('x-session-id', sessionData.session.id);
 
       logger.info('WebSocket upgrade authenticated', {
-        userId: user.id,
-        sessionId: session.id,
+        userId: sessionData.user.id,
+        sessionId: sessionData.session.id,
       });
 
       return; // Allow upgrade

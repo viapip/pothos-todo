@@ -25,8 +25,8 @@ export async function authMiddleware(event: H3Event): Promise<Partial<Context>> 
 			sessionData.user.id,
 			sessionData.user.email,
 			sessionData.user.name,
-			sessionData.user.createdAt,
-			sessionData.user.updatedAt
+			sessionData.user.createdAt.toISOString(),
+			sessionData.user.updatedAt.toISOString()
 		);
 		
 		return {

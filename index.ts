@@ -34,6 +34,11 @@ import { correlationIdMiddleware, withCorrelation } from "./src/middleware/corre
 import { security } from "./src/middleware/security.js";
 import { errorHandler } from "./src/middleware/errorHandler.js";
 import { rateLimiters } from "./src/middleware/rateLimit.js";
+import { CacheWarmer, defaultCacheWarmingConfig } from "./src/infrastructure/cache/CacheWarmer.js";
+import { prismaService } from "./src/lib/prisma.js";
+import { getDatabaseConfig } from "./src/config/env.validation.js";
+import { MetricsCollector, createMetricsMiddleware } from "./src/infrastructure/monitoring/MetricsCollector.js";
+import { handleMetrics, handleMetricsHistory, handlePrometheusMetrics } from "./src/routes/metrics.js";
 
 async function startServer() {
   try {
@@ -58,12 +63,30 @@ async function startServer() {
       logger.info("OpenTelemetry initialized");
     }
 
+    // Initialize database with optimized pooling
+    const databaseConfig = getDatabaseConfig();
+    logger.info("Initializing database connection pool", {
+      poolSize: databaseConfig.poolSize,
+    });
+    await prismaService.connect();
+    logger.info("Database connection pool initialized");
+
     // Initialize cache manager if enabled
     if (cacheConfig.enabled) {
       const cacheManager = CacheManager.getInstance();
       await cacheManager.connect();
       logger.info("Cache manager initialized");
+      
+      // Start cache warming
+      const cacheWarmer = CacheWarmer.getInstance();
+      await cacheWarmer.start(defaultCacheWarmingConfig);
+      logger.info("Cache warming started");
     }
+
+    // Initialize metrics collection
+    const metricsCollector = MetricsCollector.getInstance();
+    metricsCollector.start(60000); // Collect metrics every minute
+    logger.info("Metrics collection started");
 
     // Initialize AI services if enabled
     if (aiConfig.enabled) {
@@ -93,7 +116,7 @@ async function startServer() {
     app.use(
       eventHandler(async (event) => {
         try {
-          await event.next?.();
+          // H3 events don't have a next() method, this is handled by the router
         } catch (error) {
           return errorHandler(error, event);
         }
@@ -111,6 +134,13 @@ async function startServer() {
     app.use(
       eventHandler((event) => {
         correlationIdMiddleware(event);
+      })
+    );
+
+    // Metrics collection middleware
+    app.use(
+      eventHandler((event) => {
+        createMetricsMiddleware()(event);
       })
     );
 
@@ -174,6 +204,28 @@ async function startServer() {
       "/health/detailed",
       eventHandler(async (event) => {
         return await handleDetailedHealthCheck(event);
+      })
+    );
+
+    // Metrics endpoints
+    app.use(
+      "/metrics",
+      eventHandler(async (event) => {
+        return await handleMetrics(event);
+      })
+    );
+
+    app.use(
+      "/metrics/history",
+      eventHandler(async (event) => {
+        return await handleMetricsHistory(event);
+      })
+    );
+
+    app.use(
+      "/metrics/prometheus",
+      eventHandler(async (event) => {
+        return await handlePrometheusMetrics(event);
       })
     );
 
@@ -276,6 +328,11 @@ async function startServer() {
           "/health/ready",
           "/health/detailed",
         ],
+        metricsEndpoints: [
+          "/metrics",
+          "/metrics/history", 
+          "/metrics/prometheus",
+        ],
       });
     });
 
@@ -296,8 +353,21 @@ async function startServer() {
           logger.info("Vector store shutdown complete");
         }
 
+        // Stop metrics collection
+        const metricsCollector = MetricsCollector.getInstance();
+        metricsCollector.stop();
+        logger.info("Metrics collection stopped");
+
+        // Shutdown database connection pool
+        await prismaService.disconnect();
+        logger.info("Database connection pool shutdown complete");
+
         // Shutdown cache manager
         if (cacheConfig.enabled) {
+          const cacheWarmer = CacheWarmer.getInstance();
+          cacheWarmer.stop();
+          logger.info("Cache warming stopped");
+          
           const cacheManager = CacheManager.getInstance();
           await cacheManager.disconnect();
           logger.info("Cache manager shutdown complete");

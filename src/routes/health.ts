@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3';
 import { logger } from '@/logger';
-import prisma from '@/lib/prisma';
+import prisma, { prismaService } from '@/lib/prisma';
 import { CacheManager } from '@/infrastructure/cache/CacheManager';
 import { Container } from '@/infrastructure/container/Container';
 import { env } from '@/config/env.validation';
@@ -24,7 +24,7 @@ export interface HealthCheckResult {
  * Basic health check - returns 200 if service is responding
  */
 export async function handleHealthCheck(event: H3Event): Promise<Response> {
-  return new Response('OK', { 
+  return new Response('OK', {
     status: 200,
     headers: {
       'Content-Type': 'text/plain',
@@ -38,7 +38,7 @@ export async function handleHealthCheck(event: H3Event): Promise<Response> {
  */
 export async function handleLivenessProbe(event: H3Event): Promise<Response> {
   const start = Date.now();
-  
+
   try {
     // Basic liveness check - can we respond to requests?
     const result: HealthCheckResult = {
@@ -63,7 +63,7 @@ export async function handleLivenessProbe(event: H3Event): Promise<Response> {
     });
   } catch (error) {
     logger.error('Liveness probe failed', { error });
-    
+
     return new Response(JSON.stringify({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
@@ -93,19 +93,31 @@ export async function handleReadinessProbe(event: H3Event): Promise<Response> {
   const checks: HealthCheckResult['checks'] = {};
   let overallStatus: 'healthy' | 'unhealthy' | 'degraded' = 'healthy';
 
-  // Check database connectivity
+  // Check database connectivity with pool statistics
   try {
     const dbStart = Date.now();
-    await prisma.$queryRaw`SELECT 1`;
+    const dbHealth = await prismaService.healthCheck();
+    
     checks.database = {
-      status: 'pass',
-      responseTime: Date.now() - dbStart,
+      status: dbHealth.status === 'healthy' ? 'pass' : 'fail',
+      responseTime: dbHealth.latency,
+      metadata: {
+        ...dbHealth.details,
+        poolStats: prismaService.getPoolStats(),
+      },
     };
+    
+    if (dbHealth.status !== 'healthy') {
+      overallStatus = 'unhealthy';
+    }
   } catch (error) {
     logger.error('Database health check failed', { error });
     checks.database = {
       status: 'fail',
       message: 'Cannot connect to database',
+      metadata: {
+        poolStats: prismaService.getPoolStats(),
+      },
     };
     overallStatus = 'unhealthy';
   }
@@ -118,7 +130,7 @@ export async function handleReadinessProbe(event: H3Event): Promise<Response> {
       const testKey = '__health_check__';
       await cacheManager.set(testKey, 'ok', { ttl: 10 });
       const value = await cacheManager.get(testKey);
-      
+
       if (value === 'ok') {
         checks.cache = {
           status: 'pass',
@@ -150,19 +162,19 @@ export async function handleReadinessProbe(event: H3Event): Promise<Response> {
     try {
       const container = Container.getInstance();
       const aiStart = Date.now();
-      
+
       // Check vector store connectivity
       if (container.vectorStore) {
-        const collections = await container.vectorStore.getCollections();
+        const collection = await container.vectorStore.getCollection('todos');
         checks.vectorStore = {
           status: 'pass',
           responseTime: Date.now() - aiStart,
           metadata: {
-            collections: collections.length,
+            collection: collection ? 'available' : 'unavailable',
           },
         };
       }
-      
+
       // Check if AI services are initialized
       if (env.OPENAI_API_KEY) {
         checks.aiServices = {
@@ -193,7 +205,7 @@ export async function handleReadinessProbe(event: H3Event): Promise<Response> {
   // Check memory usage
   const memoryUsage = process.memoryUsage();
   const heapUsedPercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
-  
+
   if (heapUsedPercent > 90) {
     checks.memory = {
       status: 'fail',

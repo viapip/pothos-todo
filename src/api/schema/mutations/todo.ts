@@ -10,9 +10,10 @@ import { aiPipelineService } from '@/infrastructure/ai/AIPipelineService.js';
 import prisma from '@/lib/prisma';
 import { createTodoSchema, updateTodoSchema } from '@/validation/schemas/todo.js';
 import { nanoid } from 'nanoid';
+import { invalidateCache } from '@/api/plugins/responseCache.js';
 
 const CreateTodoInput = builder.inputType('CreateTodoInput', {
-  fields: (t) => ({
+  fields: (t: any) => ({
     title: t.string({ required: true, validate: { minLength: 1, maxLength: 200 } }),
     priority: t.field({ type: Priority, required: false }),
     dueDate: t.field({ type: 'DateTime', required: false }),
@@ -26,7 +27,7 @@ const CreateTodoInput = builder.inputType('CreateTodoInput', {
 });
 
 const UpdateTodoInput = builder.inputType('UpdateTodoInput', {
-  fields: (t) => ({
+  fields: (t: any) => ({
     title: t.string({ required: false, validate: { minLength: 1, maxLength: 200 } }),
     priority: t.field({ type: Priority, required: false }),
     dueDate: t.field({ type: 'DateTime', required: false }),
@@ -38,7 +39,7 @@ const UpdateTodoInput = builder.inputType('UpdateTodoInput', {
   }),
 });
 
-export const todoMutations = builder.mutationFields((t) => ({
+export const todoMutations = builder.mutationFields((t: any) => ({
   createTodo: t.prismaField({
     type: 'Todo',
     args: {
@@ -47,7 +48,7 @@ export const todoMutations = builder.mutationFields((t) => ({
     authScopes: {
       authenticated: true,
     },
-    resolve: async (query, root, args, context) => {
+    resolve: async (query: any, root: any, args: any, context: any) => {
       if (!context.user) {
         throw new Error('Not authenticated');
       }
@@ -108,6 +109,11 @@ export const todoMutations = builder.mutationFields((t) => ({
         }
       }
 
+      // Invalidate cache for todos and the specific todo
+      await invalidateCache('Todo', todo.id);
+      await invalidateCache('TodoList', todo.todoListId || undefined);
+      await invalidateCache('User', context.user.id);
+
       return todo;
     },
 
@@ -122,7 +128,7 @@ export const todoMutations = builder.mutationFields((t) => ({
     authScopes: {
       authenticated: true,
     },
-    resolve: async (query, root, args, context) => {
+    resolve: async (query: any, root: any, args: any, context: any) => {
       if (!context.user) {
         throw new Error('Not authenticated');
       }
@@ -138,7 +144,7 @@ export const todoMutations = builder.mutationFields((t) => ({
           title: args.input.title || undefined,
           priority: args.input.priority as PrismaPriority | null,
           status: args.input.status as PrismaTodoStatus | null,
-          dueDate: args.input.dueDate as Date | null,
+          dueDate: args.input.dueDate as Date | undefined,
           tags: args.input.tags as string[] | undefined,
           todoListId: args.input.listId || undefined,
           description: args.input.description || undefined,
@@ -153,6 +159,11 @@ export const todoMutations = builder.mutationFields((t) => ({
         throw new Error('Todo not found');
       }
 
+      // Invalidate cache for the updated todo
+      await invalidateCache('Todo', todo.id);
+      await invalidateCache('TodoList', todo.todoListId || undefined);
+      await invalidateCache('User', context.user.id);
+
       return todo;
     },
 
@@ -166,7 +177,7 @@ export const todoMutations = builder.mutationFields((t) => ({
     authScopes: {
       authenticated: true,
     },
-    resolve: async (query, root, args, context) => {
+    resolve: async (query: any, root: any, args: any, context: any) => {
       if (!context.user) {
         throw new Error('Not authenticated');
       }
@@ -187,6 +198,11 @@ export const todoMutations = builder.mutationFields((t) => ({
         throw new Error('Todo not found');
       }
 
+      // Invalidate cache for the completed todo
+      await invalidateCache('Todo', todo.id);
+      await invalidateCache('TodoList', todo.todoListId || undefined);
+      await invalidateCache('User', context.user.id);
+
       return todo;
     },
 
@@ -200,13 +216,17 @@ export const todoMutations = builder.mutationFields((t) => ({
     authScopes: {
       authenticated: true,
     },
-    resolve: async (root, args, context) => {
+    resolve: async (root: any, args: any, context: any) => {
       if (!context.user) {
         throw new Error('Not authenticated');
       }
 
       const container = Container.getInstance();
       const handler = container.deleteTodoHandler;
+      const todoRepository = container.todoRepository;
+
+      // Get the todo before deletion to know which caches to invalidate
+      const todo = await todoRepository.findById(args.id);
 
       const command = new DeleteTodoCommand(
         args.id,
@@ -214,6 +234,14 @@ export const todoMutations = builder.mutationFields((t) => ({
       );
 
       await handler.handle(command);
+
+      // Invalidate cache for the deleted todo
+      if (todo) {
+        await invalidateCache('Todo', todo.id);
+        await invalidateCache('TodoList', todo.todoListId || undefined);
+      }
+      await invalidateCache('User', context.user.id);
+
       return true;
     },
 

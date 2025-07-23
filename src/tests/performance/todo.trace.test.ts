@@ -3,7 +3,7 @@ import { Container } from '@/infrastructure/container/Container.js';
 import { CreateTodoCommand } from '@/application/commands/CreateTodoCommand.js';
 import { performanceMonitor } from '@/infrastructure/telemetry/PerformanceMonitor.js';
 import prisma from '@/lib/prisma.js';
-import { Priority as PriorityEnum } from '@/domain/value-objects/Priority.js';
+import { Priority } from '@/domain/value-objects/Priority.js';
 
 /**
  * Trace-based performance tests for Todo operations
@@ -19,7 +19,7 @@ export const todoPerformanceTests = traceBasedTesting.createSuite('Todo Performa
       'cache.set',
     ],
     assertMetrics: (metrics) => {
-      traceBasedTesting.constructor.assertPerformanceMetrics(metrics, {
+      (traceBasedTesting as any).assertPerformanceMetrics(metrics, {
         maxResponseTime: 100,
         maxErrorRate: 0.01,
       });
@@ -33,9 +33,9 @@ export const todoPerformanceTests = traceBasedTesting.createSuite('Todo Performa
       'Performance test todo',
       'Testing trace-based performance',
       'test-user-id',
-      null,
-      PriorityEnum.Medium,
-      null
+      undefined,
+      Priority.medium,
+      undefined
     );
 
     await handler.handle(command);
@@ -53,11 +53,11 @@ export const todoPerformanceTests = traceBasedTesting.createSuite('Todo Performa
         CreateTodoCommand.create(
           crypto.randomUUID(),
           `Bulk test todo ${i}`,
-          null,
+          undefined,
           'test-user-id',
-          null,
-          PriorityEnum.Low,
-          null
+          undefined,
+          Priority.low,
+          undefined
         )
       )
     );
@@ -130,11 +130,11 @@ export async function runTodoBenchmarks() {
         CreateTodoCommand.create(
           crypto.randomUUID(),
           'Benchmark todo',
-          null,
+          undefined,
           'test-user-id',
-          null,
-          PriorityEnum.Medium,
-          null
+          undefined,
+          Priority.medium,
+          undefined
         )
       );
     }

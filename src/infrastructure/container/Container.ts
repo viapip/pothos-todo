@@ -16,10 +16,14 @@ import { EmbeddingService } from '../ai/EmbeddingService.js';
 import { NLPService } from '../ai/NLPService.js';
 import { RAGService } from '../ai/RAGService.js';
 import { MLPredictionService } from '../ai/MLPredictionService.js';
+import { PrismaService } from '../database/PrismaService.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export class Container {
+  public readonly id: string;
   private static instance: Container;
 
+  private readonly _prismaService: PrismaService;
   private readonly _prisma: PrismaClient;
   private readonly _todoRepository: PrismaTodoRepository;
   private readonly _todoListRepository: PrismaTodoListRepository;
@@ -41,7 +45,9 @@ export class Container {
   private readonly _executeNLPCommandHandler: ExecuteNLPCommandHandler;
 
   private constructor() {
-    this._prisma = new PrismaClient();
+    this.id = uuidv4();
+    this._prismaService = PrismaService.getInstance();
+    this._prisma = this._prismaService.getClient();
 
     this._todoRepository = new PrismaTodoRepository(this._prisma);
     this._todoListRepository = new PrismaTodoListRepository(this._prisma);
@@ -83,6 +89,10 @@ export class Container {
       Container.instance = new Container();
     }
     return Container.instance;
+  }
+
+  get prismaService(): PrismaService {
+    return this._prismaService;
   }
 
   get prisma(): PrismaClient {

@@ -1,7 +1,6 @@
 
 import { Priority as PrismaPriority } from '@prisma/client';
 import { TodoStatus as PrismaTodoStatus } from '@prisma/client';
-import { DueDate } from '../../domain/value-objects/DueDate.js';
 
 export class UpdateTodoCommand {
   constructor(
@@ -9,7 +8,7 @@ export class UpdateTodoCommand {
     public readonly userId: string,
     public readonly title?: string,
     public readonly priority?: PrismaPriority,
-    public readonly dueDate?: DueDate,
+    public readonly dueDate?: Date,
     public readonly todoListId?: string | null,
     public readonly status?: PrismaTodoStatus,
     public readonly tags?: string[],
@@ -50,7 +49,7 @@ export class UpdateTodoCommand {
       userId,
       updates.title?.trim(),
       updates.priority ?? undefined,
-      updates.dueDate ? new DueDate(updates.dueDate) : undefined,
+      updates.dueDate,
       updates.todoListId,
       updates.status ?? undefined,
       updates.tags ?? undefined,
@@ -61,7 +60,7 @@ export class UpdateTodoCommand {
   }
 
   public validateDueDate(): void {
-    if (this.dueDate && this.dueDate.value <= new Date()) {
+    if (this.dueDate && this.dueDate <= new Date()) {
       throw new Error('Due date cannot be in the past');
     }
   }
