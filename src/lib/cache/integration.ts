@@ -21,7 +21,7 @@ import type { Context } from '../../api/schema/builder.js';
 // ================================
 
 export interface CacheContextExtension {
-  cache: CacheManager;
+  cache: CacheManager | null;
   loaders: LoaderContext;
   cacheHints: CacheHint[];
 }
@@ -98,7 +98,7 @@ export function createCachedContext(baseContext: Context): ExtendedContext {
   
   return {
     ...baseContext,
-    cache: getCacheManager(),
+    cache: cacheManager || null, // Use null if cache manager isn't initialized yet
     loaders: requestLoaderContext,
     cacheHints: [],
   };
