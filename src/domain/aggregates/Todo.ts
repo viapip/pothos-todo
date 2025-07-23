@@ -110,7 +110,7 @@ export class Todo extends AggregateRoot {
     return this._priority;
   }
 
-  get dueDate(): Date | null {
+  get dueDate(): Date {
     return this._dueDate;
   }
 

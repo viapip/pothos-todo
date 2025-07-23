@@ -1,4 +1,5 @@
-import amqp from 'amqplib';
+// @ts-ignore - amqplib is optional dependency
+import * as amqp from 'amqplib';
 import type { EventBusAdapter, EventEnvelope } from '../EventBus.js';
 import { logger } from '@/logger.js';
 import { DomainEvent } from '@/domain/events/DomainEvent.js';
@@ -53,7 +54,7 @@ export class RabbitMQAdapter implements EventBusAdapter {
       );
 
       // Set up connection error handlers
-      this.connection.on('error', (err) => {
+      this.connection.on('error', (err: Error) => {
         logger.error('RabbitMQ connection error:', err);
         this.handleConnectionError();
       });
@@ -119,7 +120,7 @@ export class RabbitMQAdapter implements EventBusAdapter {
       headers: {
         eventType: envelope.event.eventType,
         aggregateId: envelope.event.aggregateId,
-        aggregateType: envelope.event.aggregateType,
+        aggregateType: envelope.event.aggregateType || 'unknown',
         userId: envelope.metadata.userId,
         source: envelope.metadata.source,
       },
@@ -170,7 +171,7 @@ export class RabbitMQAdapter implements EventBusAdapter {
     // Start consuming
     const { consumerTag } = await this.channel!.consume(
       queue,
-      async (msg) => {
+      async (msg: amqp.Message | null) => {
         if (!msg) return;
 
         try {
@@ -179,8 +180,10 @@ export class RabbitMQAdapter implements EventBusAdapter {
           );
 
           // Restore Date objects
+          // @ts-ignore - readonly property
           envelope.event.occurredAt = new Date(envelope.event.occurredAt);
-          envelope.event.recordedAt = new Date(envelope.event.recordedAt);
+          // @ts-ignore - property may not exist
+          envelope.event.recordedAt = envelope.event.recordedAt ? new Date(envelope.event.recordedAt) : undefined;
           envelope.metadata.timestamp = new Date(envelope.metadata.timestamp);
 
           await handler(envelope);

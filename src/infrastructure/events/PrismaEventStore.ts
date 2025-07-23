@@ -1,7 +1,7 @@
 import { PrismaClient, type DomainEvent as PrismaDomainEvent } from '@prisma/client';
 import type { EventStore, StoredEvent } from './EventStore.js';
 import { DomainEvent } from '../../domain/events/DomainEvent.js';
-import type { JsonValue } from '@prisma/client/runtime/library';
+import type { JsonObject } from '@prisma/client/runtime/library';
 
 export class PrismaEventStore implements EventStore {
   constructor(private readonly prisma: PrismaClient) { }
@@ -36,9 +36,9 @@ export class PrismaEventStore implements EventStore {
     });
   }
 
-  async getEvents(aggregateId: string, fromVersion: number = 0, limit?: number): Promise<DomainEvent[]> {
+  async getEvents(aggregateId: string, fromVersion: number = 0, limit?: number): Promise<StoredEvent[]> {
     const events = await this.prisma.domainEvent.findMany({
-      where: { 
+      where: {
         aggregateId,
         version: { gte: fromVersion }
       },
@@ -46,7 +46,7 @@ export class PrismaEventStore implements EventStore {
       take: limit,
     });
 
-    return events.map(this.mapToDomainEvent);
+    return events.map(this.mapToStoredEvent);
   }
 
   async getEventsFromVersion(aggregateId: string, fromVersion: number): Promise<StoredEvent[]> {
@@ -78,17 +78,17 @@ export class PrismaEventStore implements EventStore {
     return events.map(this.mapToStoredEvent);
   }
 
-  async getEventsAfterPosition(position: number, limit: number): Promise<DomainEvent[]> {
+  async getEventsAfterPosition(position: number, limit: number): Promise<StoredEvent[]> {
     const events = await this.prisma.domainEvent.findMany({
       skip: position,
       take: limit,
       orderBy: { createdAt: 'asc' },
     });
 
-    return events.map(this.mapToDomainEvent);
+    return events.map(this.mapToStoredEvent);
   }
 
-  async getEventsByTimeRange(start: Date, end: Date): Promise<DomainEvent[]> {
+  async getEventsByTimeRange(start: Date, end: Date): Promise<StoredEvent[]> {
     const events = await this.prisma.domainEvent.findMany({
       where: {
         createdAt: {
@@ -99,7 +99,7 @@ export class PrismaEventStore implements EventStore {
       orderBy: { createdAt: 'asc' },
     });
 
-    return events.map(this.mapToDomainEvent);
+    return events.map(this.mapToStoredEvent);
   }
 
   private mapToStoredEvent(event: PrismaDomainEvent): StoredEvent {
@@ -125,8 +125,8 @@ export class PrismaEventStore implements EventStore {
   private mapToDomainEvent = (event: PrismaDomainEvent): DomainEvent => {
     // Create a minimal DomainEvent implementation for stored events
     class StoredDomainEvent extends DomainEvent {
-      getEventData(): Record<string, unknown> {
-        return event.eventData as Record<string, unknown>;
+      getEventData(): JsonObject {
+        return event.eventData as JsonObject;
       }
     }
 
@@ -135,7 +135,13 @@ export class PrismaEventStore implements EventStore {
       event.eventType,
       event.version,
       event.id,
-      '', // userId not stored in this implementation
+      {
+        title: '',
+        assigneeIds: [],
+        requiresNotification: false
+      },
+      event.createdAt,
+      event.createdAt,
       event.createdAt
     );
   }

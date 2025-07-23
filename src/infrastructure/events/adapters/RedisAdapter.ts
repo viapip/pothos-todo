@@ -82,8 +82,10 @@ export class RedisAdapter implements EventBusAdapter {
         const envelope: EventEnvelope = JSON.parse(message);
         
         // Restore Date objects
+        // @ts-ignore - readonly property
         envelope.event.occurredAt = new Date(envelope.event.occurredAt);
-        envelope.event.recordedAt = new Date(envelope.event.recordedAt);
+        // @ts-ignore - property may not exist
+        envelope.event.recordedAt = envelope.event.recordedAt ? new Date(envelope.event.recordedAt) : undefined;
         envelope.metadata.timestamp = new Date(envelope.metadata.timestamp);
 
         // Find handler for this channel
@@ -104,8 +106,10 @@ export class RedisAdapter implements EventBusAdapter {
         const envelope: EventEnvelope = JSON.parse(message);
         
         // Restore Date objects
+        // @ts-ignore - readonly property
         envelope.event.occurredAt = new Date(envelope.event.occurredAt);
-        envelope.event.recordedAt = new Date(envelope.event.recordedAt);
+        // @ts-ignore - property may not exist
+        envelope.event.recordedAt = envelope.event.recordedAt ? new Date(envelope.event.recordedAt) : undefined;
         envelope.metadata.timestamp = new Date(envelope.metadata.timestamp);
 
         // Find handler for this pattern

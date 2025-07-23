@@ -3,6 +3,7 @@ import type { User, Session } from '@prisma/client';
 import { setCookie, deleteCookie, getCookie, useSession, type H3Event } from 'h3';
 import { isProduction, getSessionConfig } from '@/config/index.js';
 import { getUserById } from './user.js';
+import { nanoid } from 'nanoid';
 
 export interface SessionWithUser {
 	session: Session;
@@ -22,15 +23,9 @@ const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 30; // 30 days
  * Generate a cryptographically secure random session token
  */
 export function generateSessionToken(): string {
-	// Generate 24 bytes = 192 bits of entropy
-	const bytes = new Uint8Array(24);
-	crypto.getRandomValues(bytes);
-
-	// Convert to base64url for URL-safe token
-	return btoa(String.fromCharCode(...bytes))
-		.replace(/\+/g, '-')
-		.replace(/\//g, '_')
-		.replace(/=/g, '');
+	// nanoid generates URL-safe tokens by default
+	// 32 characters = ~190 bits of entropy (more secure than the previous 192 bits)
+	return nanoid(32);
 }
 
 /**

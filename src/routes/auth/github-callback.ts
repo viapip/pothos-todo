@@ -1,6 +1,7 @@
 import { github, getOAuthState, validateOAuthState, handleGitHubOAuth, generateSessionToken, createSession, setSessionTokenCookie, type GitHubUserInfo } from '@/lib/auth';
 import type { OAuth2Tokens } from 'arctic';
 import { type H3Event } from 'h3';
+import { ofetch } from 'ofetch';
 
 /**
  * Handle GitHub OAuth callback using H3
@@ -39,33 +40,31 @@ export async function handleGitHubCallback(event: H3Event): Promise<Response> {
 		// Fetch user information from GitHub API
 		let githubUserInfo: GitHubUserInfo;
 		try {
-			const userResponse = await fetch('https://api.github.com/user', {
+			const userData = await ofetch('https://api.github.com/user', {
 				headers: {
 					Authorization: `Bearer ${tokens.accessToken()}`,
 					'User-Agent': 'Pothos-Todo-App',
 				},
+				retry: 2,
+				timeout: 5000,
 			});
-			
-			if (!userResponse.ok) {
-				throw new Error(`GitHub API error: ${userResponse.status}`);
-			}
-			
-			const userData = await userResponse.json();
 			
 			// Fetch user email if not public
 			let email = userData.email;
 			if (!email) {
-				const emailResponse = await fetch('https://api.github.com/user/emails', {
-					headers: {
-						Authorization: `Bearer ${tokens.accessToken()}`,
-						'User-Agent': 'Pothos-Todo-App',
-					},
-				});
-				
-				if (emailResponse.ok) {
-					const emails = await emailResponse.json();
+				try {
+					const emails = await ofetch('https://api.github.com/user/emails', {
+						headers: {
+							Authorization: `Bearer ${tokens.accessToken()}`,
+							'User-Agent': 'Pothos-Todo-App',
+						},
+						retry: 2,
+						timeout: 5000,
+					});
 					const primaryEmail = emails.find((e: any) => e.primary && e.verified);
 					email = primaryEmail?.email || emails[0]?.email;
+				} catch {
+					// Email fetch failed, but continue if we have other data
 				}
 			}
 			

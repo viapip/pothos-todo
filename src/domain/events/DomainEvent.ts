@@ -1,3 +1,6 @@
+import type { JsonObject } from "@prisma/client/runtime/library";
+import { nanoid } from 'nanoid';
+
 export interface Metadata extends Record<string, unknown> {
   title: string;
   assigneeIds: string[];
@@ -9,7 +12,6 @@ export abstract class DomainEvent {
   public readonly aggregateId: string;
   public readonly aggregateType?: string;
   public readonly eventType: string;
-  public readonly userId: string;
   public readonly occurredAt: Date;
   public readonly version: number;
   public readonly createdAt: Date;
@@ -22,21 +24,19 @@ export abstract class DomainEvent {
     aggregateId: string,
     eventType: string,
     version: number = 1,
-    eventId: string = crypto.randomUUID(),
-    userId: string = '',
-    occurredAt: Date = new Date(),
-    createdAt: Date = new Date(),
-    updatedAt: Date = new Date(),
+    eventId: string = nanoid(),
     metadata: Metadata = {
       title: '',
       assigneeIds: [],
       requiresNotification: false
-    }
+    },
+    occurredAt: Date = new Date(),
+    createdAt: Date = new Date(),
+    updatedAt: Date = new Date(),
   ) {
     this.eventId = eventId;
     this.aggregateId = aggregateId;
     this.eventType = eventType;
-    this.userId = userId;
     this.occurredAt = occurredAt;
     this.version = version;
     this.createdAt = createdAt;
@@ -44,5 +44,5 @@ export abstract class DomainEvent {
     this.metadata = metadata;
   }
 
-  abstract getEventData(): Record<string, unknown>;
+  abstract getEventData(): JsonObject;
 }

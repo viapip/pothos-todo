@@ -1,19 +1,14 @@
-import { inspect } from 'node:util'
-import { join } from 'pathe'
-import { existsSync, mkdirSync } from 'node:fs'
+import { createConsola, type ConsolaInstance } from 'consola';
+import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { join } from 'pathe';
+import { getCurrentConfig } from './config/index.js';
+import { isDevelopment } from 'std-env';
 
-import {
-  type LoggerOptions,
-  createLogger as createWinstonLogger,
-  format as f,
-  transports as t,
-} from 'winston'
+export type Logger = ConsolaInstance;
 
-import { getCurrentConfig } from './config/index.js'
-
-export function createLogger(options?: LoggerOptions) {
-  // Get logger configuration (with fallback values)
-  const config = getCurrentConfig()
+export function createLogger(): ConsolaInstance {
+  // Get logger configuration
+  const config = getCurrentConfig();
   const loggerConfig = config?.logger || {
     level: 'info',
     service: 'pothos-todo',
@@ -25,123 +20,93 @@ export function createLogger(options?: LoggerOptions) {
     },
     console: {
       enabled: true,
-      colors: {
-        error: 'red',
-        warn: 'yellow',
-        info: 'blue',
-        debug: 'gray',
-      },
     },
-  }
+  };
 
   // Ensure log directory exists
   if (loggerConfig.dir && !existsSync(loggerConfig.dir)) {
-    mkdirSync(loggerConfig.dir, { recursive: true })
+    mkdirSync(loggerConfig.dir, { recursive: true });
   }
 
-  // Build transports array
-  const transports: any[] = []
-
-  // Console transport (conditional)
-  if (loggerConfig.console?.enabled) {
-    transports.push(
-      new t.Console({
-        level: loggerConfig.level,
-        format: f.combine(
-          f.colorize({
-            level: true,
-            message: false,
-            colors: loggerConfig.console?.colors || {
-              error: 'red',
-              warn: 'yellow',
-              info: 'blue',
-              debug: 'gray',
-            },
-          }),
-          f.printf((log: any) => {
-            const bagde = `. ${log.level}${log.label && `:${log.label}`}`
-            const name =
-              log.service && log.version && `\\ ${log.service}@${log.version}`
-            const time = log.timestamp && `> ${log.timestamp.split('T')[1]}`
-            const message =
-              typeof log.message === 'string' &&
-              log.message.length > 0 &&
-              `\\ ${log.message}`
-            const stack =
-              log.stack &&
-              typeof log.message === 'string' &&
-              log.message.length > 0 &&
-              log.stack.slice(log.stack.indexOf('\n') + 1)
-            const data =
-              log.data &&
-              typeof log.data === 'object' &&
-              Object.keys(log.data).length > 0 &&
-              inspect(log.data, {
-                breakLength: 80,
-                compact: true,
-                colors: true,
-                showHidden: true,
-                sorted: true,
-              })
-
-            return [bagde, name, time, message, stack, data].reduce(
-              (acc, line) => (line ? `${acc}\n${line}` : acc),
-              '',
-            )
-          }),
-        ),
-      })
-    )
-  }
-
-  // File transports
-  if (loggerConfig.dir && loggerConfig.files) {
-    transports.push(
-      new t.File({
-        level: loggerConfig.level,
-        filename: join(loggerConfig.dir, loggerConfig.files.debug),
-        format: f.json(),
-      }),
-      new t.File({
-        level: 'error',
-        filename: join(loggerConfig.dir, loggerConfig.files.error),
-        format: f.json(),
-      })
-    )
-  }
-
-  return createWinstonLogger({
-    defaultMeta: {
-      service: loggerConfig.service,
-      version: loggerConfig.version,
+  // Create consola instance with configuration
+  const logger = createConsola({
+    level: mapLogLevel(loggerConfig.level),
+    fancy: isDevelopment && loggerConfig.console?.enabled !== false,
+    formatOptions: {
+      date: true,
+      colors: true,
+      compact: false,
     },
+    // Add custom reporters for file logging
+    reporters: [
+      // Default reporter for console output
+      ...(loggerConfig.console?.enabled !== false ? [{
+        log: (logObj: any) => {
+          // Use consola's default console reporter
+          return;
+        }
+      }] : []),
+      // File reporter for errors
+      {
+        log: (logObj: any) => {
+          if (!loggerConfig.dir || !loggerConfig.files) return;
+          
+          const timestamp = new Date().toISOString();
+          const logEntry = {
+            timestamp,
+            level: logObj.level,
+            type: logObj.type,
+            tag: logObj.tag,
+            message: logObj.args.join(' '),
+            service: loggerConfig.service,
+            version: loggerConfig.version,
+            ...(logObj.additional || {}),
+          };
 
-    exitOnError: false,
-    handleRejections: true,
+          // Write errors to error log
+          if (logObj.level === 0) { // error level
+            const errorPath = join(loggerConfig.dir, loggerConfig.files.error);
+            appendFileSync(errorPath, JSON.stringify(logEntry) + '\n');
+          }
 
-    format: f.combine(
-      f.timestamp(),
-      f.errors({
-        stack: true,
-        inspect: false,
-      }),
-      f.metadata({
-        key: 'data',
-        fillExcept: [
-          'stack',
-          'version',
-          'message',
-          'label',
-          'level',
-          'timestamp',
-        ],
-      }),
-    ),
+          // Write all logs to debug log
+          const debugPath = join(loggerConfig.dir, loggerConfig.files.debug);
+          appendFileSync(debugPath, JSON.stringify(logEntry) + '\n');
+        },
+      },
+    ],
+  });
 
-    transports,
+  // Add service metadata to all logs
+  logger.withTag(loggerConfig.service);
 
-    ...options,
-  })
+  return logger;
 }
 
+// Map winston log levels to consola levels
+function mapLogLevel(level: string): number {
+  const levelMap: Record<string, number> = {
+    error: 0,
+    warn: 1,
+    info: 3,
+    debug: 4,
+    silent: -999,
+  };
+  return levelMap[level] || 3; // default to info
+}
+
+// Create and export the default logger instance
 export const logger = createLogger();
+
+// Re-export common log methods for convenience
+export const { 
+  error,
+  warn,
+  info,
+  debug,
+  success,
+  log,
+  start,
+  ready,
+  box,
+} = logger;

@@ -4,6 +4,7 @@ import { logger } from '../logger.js';
 import { verifySessionToken } from '../lib/auth/lucia.js';
 import { PubSubManager } from '../infrastructure/realtime/PubSubManager.js';
 import { Container } from '../infrastructure/container/Container.js';
+import { parseCookie } from 'cookie-es';
 
 interface AuthenticatedPeer extends Peer {
   userId?: string;
@@ -191,18 +192,9 @@ export const websocketHandler = defineWebSocketHandler({
   },
 });
 
-// Helper function to parse cookies
+// Helper function to parse cookies - now using cookie-es
 function parseCookies(cookieHeader: string): Record<string, string> {
-  const cookies: Record<string, string> = {};
-  
-  cookieHeader.split(';').forEach(cookie => {
-    const [name, value] = cookie.trim().split('=');
-    if (name && value) {
-      cookies[name] = decodeURIComponent(value);
-    }
-  });
-  
-  return cookies;
+  return parseCookie(cookieHeader);
 }
 
 // Export function to broadcast to all connected peers
