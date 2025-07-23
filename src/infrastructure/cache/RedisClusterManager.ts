@@ -3,11 +3,9 @@
  * High-performance distributed caching with intelligent routing, failover, and monitoring
  */
 
-import { logger, objectUtils, stringUtils } from '@/lib/unjs-utils.js';
-import { configManager } from '@/config/unjs-config.js';
+import { logger, stringUtils } from '@/lib/unjs-utils.js';
 import { validationService } from '@/infrastructure/validation/UnJSValidation.js';
 import { monitoring } from '@/infrastructure/observability/AdvancedMonitoring.js';
-import { messageBroker } from '@/infrastructure/microservices/MessageBroker.js';
 import { z } from 'zod';
 
 export interface CacheNode {
@@ -333,7 +331,7 @@ export class RedisClusterManager {
    */
   createCluster(cluster: Omit<CacheCluster, 'id' | 'status' | 'metrics'>): string {
     const id = stringUtils.random(8);
-    
+
     const cacheCluster: CacheCluster = {
       id,
       status: 'offline',
@@ -353,7 +351,7 @@ export class RedisClusterManager {
     // Register nodes
     for (const node of cluster.nodes) {
       this.nodes.set(node.id, node);
-      
+
       // Setup circuit breaker for node
       this.circuitBreakers.set(node.id, {
         failures: 0,
@@ -390,7 +388,7 @@ export class RedisClusterManager {
   async execute(operation: Omit<CacheOperation, 'id'>): Promise<any> {
     const id = stringUtils.random(12);
     const cacheOperation: CacheOperation = { id, ...operation };
-    
+
     this.operations.set(id, cacheOperation);
 
     const spanId = monitoring.startTrace(`cache.operation.${operation.type}`);
@@ -537,7 +535,7 @@ export class RedisClusterManager {
 
     const hash = this.hashKey(key);
     const index = hash % ring.length;
-    return ring[index];
+    return ring[index]!;
   }
 
   /**
@@ -574,7 +572,7 @@ export class RedisClusterManager {
     // Shuffle for better distribution
     for (let i = ring.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [ring[i], ring[j]] = [ring[j], ring[i]];
+      [ring[i]!, ring[j]!] = [ring[j]!, ring[i]!];
     }
 
     this.hashRing.set(clusterId, ring);
@@ -614,31 +612,31 @@ export class RedisClusterManager {
     switch (operation.type) {
       case 'get':
         return this.simulateGet(node, operation.key!);
-        
+
       case 'set':
         return this.simulateSet(node, operation.key!, operation.value, operation.ttl);
-        
+
       case 'del':
         return this.simulateDel(node, operation.keys || [operation.key!]);
-        
+
       case 'exists':
         return this.simulateExists(node, operation.key!);
-        
+
       case 'expire':
         return this.simulateExpire(node, operation.key!, operation.ttl!);
-        
+
       case 'ttl':
         return this.simulateTtl(node, operation.key!);
-        
+
       case 'scan':
         return this.simulateScan(node, operation.pattern!);
-        
+
       case 'pipeline':
         return this.simulatePipeline(node, operation);
-        
+
       case 'transaction':
         return this.simulateTransaction(node, operation);
-        
+
       default:
         throw new Error(`Unsupported operation type: ${operation.type}`);
     }
@@ -678,7 +676,7 @@ export class RedisClusterManager {
 
     // Update node metrics
     node.metrics.memory.used += this.estimateSize(value);
-    
+
     logger.debug('Cache SET operation', {
       nodeId: node.id,
       key,
@@ -694,10 +692,10 @@ export class RedisClusterManager {
    */
   private async simulateDel(node: CacheNode, keys: string[]): Promise<number> {
     await new Promise(resolve => setTimeout(resolve, Math.random() * 3));
-    
+
     // Simulate deletion of random subset
     const deletedCount = Math.floor(Math.random() * keys.length);
-    
+
     logger.debug('Cache DEL operation', {
       nodeId: node.id,
       keysRequested: keys.length,
@@ -736,11 +734,11 @@ export class RedisClusterManager {
    */
   private async simulateScan(node: CacheNode, pattern: string): Promise<string[]> {
     await new Promise(resolve => setTimeout(resolve, Math.random() * 20));
-    
+
     // Generate matching keys
     const keys: string[] = [];
     const count = Math.floor(Math.random() * 100);
-    
+
     for (let i = 0; i < count; i++) {
       keys.push(`${pattern.replace('*', '')}${i}`);
     }
@@ -753,11 +751,11 @@ export class RedisClusterManager {
    */
   private async simulatePipeline(node: CacheNode, operation: CacheOperation): Promise<any[]> {
     await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
-    
+
     // Simulate pipeline with multiple operations
     const results = [];
     const opCount = Math.floor(Math.random() * 10) + 1;
-    
+
     for (let i = 0; i < opCount; i++) {
       results.push(`pipeline_result_${i}`);
     }
@@ -770,10 +768,10 @@ export class RedisClusterManager {
    */
   private async simulateTransaction(node: CacheNode, operation: CacheOperation): Promise<any[]> {
     await new Promise(resolve => setTimeout(resolve, Math.random() * 30));
-    
+
     // Simulate transaction success/failure
     const success = Math.random() < 0.95; // 95% success rate
-    
+
     if (success) {
       return ['OK', 'OK', 'OK']; // Successful transaction
     } else {
@@ -825,7 +823,7 @@ export class RedisClusterManager {
     if (policy.rules.storage.compress) {
       operation.options.compress = true;
     }
-    
+
     if (policy.rules.storage.serialize) {
       operation.options.serialize = true;
     }
@@ -835,7 +833,7 @@ export class RedisClusterManager {
 
     // Apply access rules
     if (operation.type === 'get') {
-      operation.options.nodePreference = policy.rules.access.readPreference;
+      operation.options.nodePreference = policy.rules.access.readPreference as 'master' | 'replica' | 'any';
     }
 
     logger.debug('Cache policy applied', {
@@ -994,7 +992,7 @@ export class RedisClusterManager {
    */
   private updateStats(operation: CacheOperation, duration: number, success: boolean): void {
     this.stats.operations.total++;
-    
+
     switch (operation.type) {
       case 'get':
         this.stats.operations.gets++;
@@ -1008,12 +1006,12 @@ export class RedisClusterManager {
     }
 
     // Update performance metrics
-    this.stats.performance.avgLatency = 
+    this.stats.performance.avgLatency =
       (this.stats.performance.avgLatency + duration) / 2;
 
     // Update hit rate for GET operations
     if (operation.type === 'get') {
-      this.stats.operations.hitRate = 
+      this.stats.operations.hitRate =
         (this.stats.operations.hits / this.stats.operations.gets) * 100;
     }
 
@@ -1188,7 +1186,7 @@ export class RedisClusterManager {
           consistency: 'eventual',
         },
         access: {
-          readPreference: 'any',
+          readPreference: 'master',
           writePolicy: 'write-through',
         },
       },
@@ -1294,23 +1292,23 @@ export class RedisClusterManager {
 
             if (isHealthy) {
               healthyNodes++;
-              
+
               // Update node metrics
               node.metrics.memory.used += Math.floor((Math.random() - 0.5) * 1024 * 1024);
               node.metrics.memory.used = Math.max(0, node.metrics.memory.used);
-              node.metrics.memory.percentage = 
+              node.metrics.memory.percentage =
                 (node.metrics.memory.used / node.metrics.memory.max) * 100;
 
               node.metrics.performance.connections += Math.floor((Math.random() - 0.5) * 5);
               node.metrics.performance.connections = Math.max(0, node.metrics.performance.connections);
 
-              node.metrics.performance.opsPerSecond = 
+              node.metrics.performance.opsPerSecond =
                 800 + Math.floor(Math.random() * 400);
 
-              node.metrics.performance.hitRate = 
+              node.metrics.performance.hitRate =
                 80 + Math.random() * 15;
 
-              node.metrics.performance.avgLatency = 
+              node.metrics.performance.avgLatency =
                 1 + Math.random() * 3;
 
               // Update replication metrics for replicas
@@ -1418,7 +1416,7 @@ export class RedisClusterManager {
 
         // Update hash ring if cluster topology changed
         const masterNodes = cluster.nodes.filter(n => n.role === 'master' && n.status === 'connected');
-        if (masterNodes.length !== this.hashRing.get(clusterId)?.length / 150) {
+        if (masterNodes.length !== (this.hashRing.get(clusterId)?.length || 0) / 150) {
           this.updateHashRing(clusterId);
         }
       }
@@ -1438,9 +1436,9 @@ export class RedisClusterManager {
         this.stats.memory.used = healthyClusters.reduce((sum, c) => sum + c.metrics.usedMemory, 0);
         this.stats.memory.available = healthyClusters.reduce((sum, c) => sum + c.metrics.totalMemory, 0) - this.stats.memory.used;
         this.stats.connections.active = healthyClusters.reduce((sum, c) => sum + c.metrics.totalConnections, 0);
-        
+
         // Calculate average performance metrics
-        this.stats.performance.avgLatency = 
+        this.stats.performance.avgLatency =
           healthyClusters.reduce((sum, c) => sum + c.metrics.avgLatency, 0) / healthyClusters.length;
       }
 
@@ -1662,14 +1660,3 @@ export class RedisClusterManager {
 
 // Export singleton instance
 export const redisClusterManager = new RedisClusterManager();
-
-// Export types
-export type {
-  CacheNode,
-  CacheCluster,
-  CacheOperation,
-  CacheEntry,
-  CachePolicy,
-  CacheStats,
-  DistributedLock,
-};
