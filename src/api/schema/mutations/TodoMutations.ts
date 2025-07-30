@@ -2,11 +2,11 @@ import { builder } from '../builder.js';
 import { TodoStatus as TodoStatusEnum, Priority as PriorityEnum } from '@/graphql/__generated__/inputs';
 import prisma from '@/lib/prisma';
 import * as TodoCrud from '@/graphql/__generated__/Todo';
-import { PriorityEnum as DomainPriorityEnum } from '../../../domain/value-objects/Priority.js';
-import { CreateTodoCommand } from '../../../application/commands/CreateTodoCommand.js';
-import { UpdateTodoCommand } from '../../../application/commands/UpdateTodoCommand.js';
-import { CompleteTodoCommand } from '../../../application/commands/CompleteTodoCommand.js';
-import { DeleteTodoCommand } from '../../../application/commands/DeleteTodoCommand.js';
+import { PriorityEnum as DomainPriorityEnum } from '../../../domain/todos/value-objects/Priority.js';
+import { CreateTodoCommand } from '../../../application/todos/commands/CreateTodoCommand.js';
+import { UpdateTodoCommand } from '../../../application/todos/commands/UpdateTodoCommand.js';
+import { CompleteTodoCommand } from '../../../application/todos/commands/CompleteTodoCommand.js';
+import { DeleteTodoCommand } from '../../../application/todos/commands/DeleteTodoCommand.js';
 
 export const CreateTodoInput = builder.inputType('CreateTodoInput', {
   fields: (t) => ({

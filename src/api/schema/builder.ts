@@ -10,7 +10,7 @@ import TracingPlugin from '@pothos/plugin-tracing';
 import ScopeAuthPlugin from '@pothos/plugin-scope-auth';
 import SimpleObjectsPlugin from '@pothos/plugin-simple-objects';
 import prisma from '@/lib/prisma';
-import type { User } from '../../domain/aggregates/User.js';
+import type { User } from '../../domain/users/aggregates/User.js';
 import type { Container } from '../../infrastructure/container/Container.js';
 import type PrismaTypes from '@pothos/plugin-prisma/generated';
 import type { SessionWithUser } from '@/lib/auth';

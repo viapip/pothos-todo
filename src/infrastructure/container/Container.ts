@@ -1,14 +1,14 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaTodoRepository } from '../persistence/PrismaTodoRepository.js';
-import { PrismaTodoListRepository } from '../persistence/PrismaTodoListRepository.js';
-import { PrismaUserRepository } from '../persistence/PrismaUserRepository.js';
-import { PrismaEventStore } from '../events/PrismaEventStore.js';
-import { InMemoryEventPublisher } from '../events/InMemoryEventPublisher.js';
-import { EventHandlerRegistry } from '../events/EventHandlerRegistry.js';
-import { CreateTodoHandler } from '../../application/handlers/CreateTodoHandler.js';
-import { UpdateTodoHandler } from '../../application/handlers/UpdateTodoHandler.js';
-import { CompleteTodoHandler } from '../../application/handlers/CompleteTodoHandler.js';
-import { DeleteTodoHandler } from '../../application/handlers/DeleteTodoHandler.js';
+import { PrismaTodoRepository } from '../persistence/todos/PrismaTodoRepository.js';
+import { PrismaTodoListRepository } from '../persistence/todos/PrismaTodoListRepository.js';
+import { PrismaUserRepository } from '../persistence/users/PrismaUserRepository.js';
+import { PrismaEventStore } from '../events/core/PrismaEventStore.js';
+import { InMemoryEventPublisher } from '../events/core/InMemoryEventPublisher.js';
+import { EventHandlerRegistry } from '../events/core/EventHandlerRegistry.js';
+import { CreateTodoHandler } from '../../application/todos/handlers/CreateTodoHandler.js';
+import { UpdateTodoHandler } from '../../application/todos/handlers/UpdateTodoHandler.js';
+import { CompleteTodoHandler } from '../../application/todos/handlers/CompleteTodoHandler.js';
+import { DeleteTodoHandler } from '../../application/todos/handlers/DeleteTodoHandler.js';
 
 export class Container {
   private static instance: Container;
