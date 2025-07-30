@@ -6,6 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Pothos GraphQL Federation project using Bun as the JavaScript runtime and H3 as the HTTP framework. The project includes authentication, session management, and GraphQL API.
 
+## Code Quality Requirements
+
+### TypeScript Strict Typing
+- **NEVER use `any` type** - always provide explicit types
+- Use `unknown` instead of `any` when type is truly unknown
+- Enable strict TypeScript compiler options
+- Define proper interfaces and types for all data structures
+- Avoid type assertions unless absolutely necessary
+
 ## Development Commands
 
 ### Install Dependencies
@@ -58,7 +67,7 @@ Configuration uses `.env` files and environment variables:
 
 - **Runtime**: Bun v1.2.15+
 - **HTTP Framework**: H3 v1.15.3 (Universal HTTP server)
-- **Language**: TypeScript 5+
+- **Language**: TypeScript 5+ with strict mode
 - **GraphQL**: GraphQL Yoga + Pothos schema builder
 - **Database**: PostgreSQL + Prisma ORM
 - **Authentication**: Lucia + Arctic (OAuth providers)
@@ -112,10 +121,10 @@ const port = process.env.PORT; // Don't do this
 
 ## Documentation
 
-- Если необходима документация по пакетам, то сначала смотреть в папку docs/
+- If package documentation is needed, first check the `docs/` folder
 
 ## Environment Variable Management
 
 - **Important Guidelines**:
-  - не использовать process.env в проекте, кроме конфигурации
-  - Все получения переменных окружения только через конфигурацию
+  - Never use `process.env` in the project except in configuration files
+  - All environment variables must be accessed through configuration functions only
