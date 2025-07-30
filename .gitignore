@@ -10,7 +10,12 @@ node_modules
 dist
 *.tgz
 
+# docs
 docs/
+
+# review
+review/
+
 # code coverage
 coverage
 *.lcov
